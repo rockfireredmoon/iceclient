@@ -1,0 +1,414 @@
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+	xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/maven-v4_0_0.xsd">
+	<modelVersion>4.0.0</modelVersion>
+	<artifactId>iceclient-pkg-getdown</artifactId>
+	<name>Iceclient Getdown Installer</name>
+	<description>Iceclient Getdown installer. </description>
+	<parent>
+		<groupId>org.icemoon</groupId>
+		<artifactId>iceclient</artifactId>
+		<version>0.0.1-SNAPSHOT</version>
+		<relativePath>..</relativePath>
+	</parent>
+	<packaging>pom</packaging>
+
+	<properties>
+		<staging.dir>${project.build.directory}/staging</staging.dir>
+	</properties>
+	<build>
+		<plugins>
+
+			<!-- Copy the source .desktop file and do filtering on them (we need to 
+				inject the asset URL to the URL handler launcher ) -->
+
+			<plugin>
+				<artifactId>maven-resources-plugin</artifactId>
+				<version>2.6</version>
+				<executions>
+					<execution>
+						<id>copy-resources</id>
+						<phase>prepare-package</phase>
+						<goals>
+							<goal>copy-resources</goal>
+						</goals>
+						<configuration>
+							<outputDirectory>${basedir}/target/applications</outputDirectory>
+							<resources>
+								<resource>
+									<directory>${basedir}/../iceclient-group/src/main/installers/applications</directory>
+									<includes>
+										<include>**/*.desktop</include>
+									</includes>
+									<filtering>true</filtering>
+								</resource>
+							</resources>
+						</configuration>
+					</execution>
+				</executions>
+			</plugin>
+
+			<!-- First build the remote update directory and the stub. -->
+			<plugin>
+				<groupId>org.icestuff</groupId>
+				<artifactId>getdown-maven-plugin</artifactId>
+				<version>0.0.1-SNAPSHOT</version>
+				<executions>
+					<execution>
+						<phase>package</phase>
+						<goals>
+							<goal>updates</goal>
+							<goal>stub</goal>
+							<goal>applet</goal>
+						</goals>
+						<configuration>
+							<appbase>${game.home}/getdown</appbase>
+							<libPath>lib</libPath>
+							<mainClass>org.icemoon.Iceclient</mainClass>
+							<mainClasses>
+								<iceclient>org.icemoon.Iceclient</iceclient>
+							</mainClasses>
+							<outputJarVersions>false</outputJarVersions>
+							<verbose>true</verbose>
+
+							<!-- This is a pom project, so the Main won't be in this artifact. 
+								Future versions may not have this problem -->
+							<ignoreMissingMain>true</ignoreMissingMain>
+							<appargs>
+								<apparg>${game.assetUrl}</apparg>
+							</appargs>
+							<altAppargs>
+								<apparg>
+									<appid>iceclient</appid>
+									<appargs>
+										<apparg>${game.assetUrl}</apparg>
+									</appargs>
+								</apparg>
+							</altAppargs>
+
+							<ui>
+								<name>Iceclient</name>
+								<icons>
+									<icon>${basedir}/../iceclient-group/src/main/installers/images/iceclient.png</icon>
+								</icons>
+								<progressImage>${basedir}/../iceclient-group/src/main/installers/images/progress.png</progressImage>
+								<backgroundImage>${basedir}/../iceclient-group/src/main/installers/images/splash.png</backgroundImage>
+								<progress>80, 244, 196, 11</progress>
+								<progressText>FFFFFF</progressText>
+								<statusText>FFFFFF</statusText>
+								<status>20, 170, 316, 64</status>
+								<textShadow>111111</textShadow>
+							</ui>
+
+							<sign>
+								<keystore>${signingFiles}/${certificate.keystore}</keystore>
+								<keypass>${certificate.password}</keypass>
+								<storepass>${certificate.password}</storepass>
+								<storetype>${certificate.storetype}</storetype>
+								<alias>${certificate.alias}</alias>
+								<verify>true</verify>
+							</sign>
+
+						</configuration>
+					</execution>
+				</executions>
+			</plugin>
+
+			<!-- Now from the stub we create some platform specific installers to 
+				give the user shortcuts etc -->
+
+			<!-- First a Deb for Debian and based systems such as Ubuntu, Mint -->
+
+			<plugin>
+				<artifactId>jdeb</artifactId>
+				<groupId>org.vafer</groupId>
+				<version>1.2</version>
+				<executions>
+					<execution>
+						<phase>package</phase>
+						<goals>
+							<goal>jdeb</goal>
+						</goals>
+						<configuration>
+						</configuration>
+					</execution>
+				</executions>
+				<dependencies>
+				</dependencies>
+				<configuration>
+					<skipPOMs>false</skipPOMs>
+					<installDir>/usr/lib/iceclient</installDir>
+					<deb>${project.basedir}/target/iceclient.deb</deb>
+					<dataSet>
+						<data>
+							<type>directory</type>
+							<src>target/getdown-stub</src>
+							<includes>*.*</includes>
+							<mapper>
+								<type>perm</type>
+								<strip>1</strip>
+								<prefix>/usr/lib/iceclient</prefix>
+								<user>root</user>
+								<group>root</group>
+								<filemode>755</filemode>
+							</mapper>
+						</data>
+						<data>
+							<type>directory</type>
+							<src>${basedir}/../iceclient-group/src/main/installers/scripts</src>
+							<includes>*</includes>
+							<mapper>
+								<type>perm</type>
+								<strip>1</strip>
+								<prefix>/usr/bin</prefix>
+								<user>root</user>
+								<group>root</group>
+								<filemode>755</filemode>
+							</mapper>
+						</data>
+						<data>
+							<type>directory</type>
+							<src>${basedir}/../iceclient-group/src/main/installers/images</src>
+							<includes>iceclient.png</includes>
+							<mapper>
+								<type>perm</type>
+								<strip>1</strip>
+								<prefix>/usr/share/pixmaps</prefix>
+								<user>root</user>
+								<group>root</group>
+								<filemode>755</filemode>
+							</mapper>
+						</data>
+						<data>
+							<type>directory</type>
+							<src>${basedir}/target/applications</src>
+							<includes>*</includes>
+							<mapper>
+								<type>perm</type>
+								<strip>1</strip>
+								<prefix>/usr/share/applications</prefix>
+								<user>root</user>
+								<group>root</group>
+								<filemode>755</filemode>
+							</mapper>
+						</data>
+					</dataSet>
+				</configuration>
+			</plugin>
+
+			<!-- Now an RPM -->
+
+			<plugin>
+				<groupId>org.codehaus.mojo</groupId>
+				<artifactId>rpm-maven-plugin</artifactId>
+				<version>2.1-alpha-4</version>
+				<extensions>true</extensions>
+				<executions>
+					<execution>
+						<phase>package</phase>
+						<goals>
+							<goal>attached-rpm</goal>
+						</goals>
+						<configuration>
+						</configuration>
+					</execution>
+				</executions>
+				<configuration>
+					<name>iceclient</name>
+					<group>Application/Internet</group>
+					<packager>Emerald Icemoon</packager>
+					<copyright>2014 Icemoon</copyright><!-- <projVersion></projVersion> --><!-- <release>0</release> -->
+					<prefix>/usr</prefix>
+					<defineStatements>
+						<defineStatement>_unpackaged_files_terminate_build 0</defineStatement>
+					</defineStatements>
+
+					<requires>
+						<require>java &gt;= 1.7.0</require>
+					</requires>
+					<mappings>
+						<mapping>
+							<directory>/usr/bin</directory>
+							<filemode>755</filemode>
+							<username>root</username>
+							<groupname>root</groupname>
+							<directoryIncluded>false</directoryIncluded>
+							<sources>
+								<source>
+									<location>${basedir}/../iceclient-group/src/main/installers/scripts/iceclient</location>
+								</source>
+							</sources>
+						</mapping>
+						<mapping>
+							<directoryIncluded>false</directoryIncluded>
+							<directory>/usr/share/applications</directory>
+							<filemode>755</filemode>
+							<username>root</username>
+							<groupname>root</groupname>
+							<sources>
+								<source>
+									<location>${basedir}/target/applications</location>
+									<includes>
+										<include>**/*</include>
+									</includes>
+								</source>
+							</sources>
+						</mapping>
+						<mapping>
+							<directoryIncluded>false</directoryIncluded>
+							<directory>/usr/share/pixmaps</directory>
+							<filemode>755</filemode>
+							<username>root</username>
+							<groupname>root</groupname>
+							<sources>
+								<source>
+									<location>${basedir}/../iceclient-group/src/main/installers/images/iceclient.png</location>
+								</source>
+							</sources>
+						</mapping>
+
+						<mapping>
+							<directory>/usr/lib/iceclient</directory>
+							<filemode>755</filemode>
+							<username>root</username>
+							<groupname>root</groupname>
+							<sources>
+								<source>
+									<location>${basedir}/target/getdown-stub</location>
+									<includes>
+										<include>**/*</include>
+									</includes>
+								</source>
+							</sources>
+						</mapping>
+					</mappings>
+				</configuration>
+
+			</plugin>
+
+			<!-- The RPM is output in the rpm build tree. We want it at the root with 
+				the other built files, and renamed slightly. As the RPM plugin has no way 
+				of setting this (that I can see), we move it using Ant -->
+			<plugin>
+				<artifactId>maven-antrun-plugin</artifactId>
+				<version>1.7</version>
+				<executions>
+					<execution>
+						<phase>package</phase>
+						<configuration>
+							<target>
+								<copy todir="target">
+									<fileset dir="target/rpm/iceclient/RPMS/noarch">
+										<include name="*.rpm" />
+									</fileset>
+									<mapper type="regexp" from="^([\w]*)-.*$$" to="\1.noarch.rpm" />
+								</copy>
+							</target>
+						</configuration>
+						<goals>
+							<goal>run</goal>
+						</goals>
+					</execution>
+				</executions>
+			</plugin>
+
+			<!-- Now for Windows -->
+
+			<plugin>
+				<groupId>org.codehaus.mojo</groupId>
+				<artifactId>nsis-maven-plugin</artifactId>
+				<version>1.0-alpha-1</version>
+				<executions>
+					<execution>
+						<phase>package</phase>
+						<goals>
+							<goal>generate-headerfile</goal>
+							<goal>make</goal>
+						</goals>
+						<configuration>
+							<environmentVariables>
+								<ASSET_URL>${game.assetUrl}</ASSET_URL>
+							</environmentVariables>
+							<outputFile>SetupIceclient.exe</outputFile>
+							<scriptFile>src/nsis/iceclient.nsi</scriptFile>
+						</configuration>
+					</execution>
+				</executions>
+			</plugin>
+
+			<!-- And now OS X -->
+
+			<!-- <plugin> <groupId>sh.tak.appbundler</groupId> <artifactId>appbundle-maven-plugin</artifactId> 
+				<version>1.1.0</version> <configuration> <mainClass>com.threerings.getdown.launcher.GetdownApp</mainClass> 
+				<generateDiskImageFile>true</generateDiskImageFile> </configuration> <executions> 
+				<execution> <phase>package</phase> <goals> <goal>bundle</goal> </goals> </execution> 
+				</executions> </plugin> -->
+
+
+			<plugin>
+				<groupId>org.codehaus.mojo</groupId>
+				<artifactId>osxappbundle-maven-plugin</artifactId>
+				<version>1.0-alpha-3-icemoon</version>
+				<configuration>
+					<buildDirectory>target/Iceclient</buildDirectory>
+					<bundleName>Iceclient</bundleName>
+					<zipFile>${basedir}/target/iceclient-app.zip</zipFile>
+					<excludeArtifacts>true</excludeArtifacts>
+					<javaApplicationStub>${basedir}/../ice/stubs/osx-stub</javaApplicationStub>
+					<mainClass>com.threerings.getdown.launcher.GetdownApp</mainClass>
+					<additionalClasspath>
+						<path>getdown.jar</path>
+					</additionalClasspath>
+					<additionalResources>
+						<fileSet>
+							<directory>${basedir}/target/getdown-stub</directory>
+							<includes>
+								<include>**/*</include>
+							</includes>
+						</fileSet>
+					</additionalResources>
+				</configuration>
+				<executions>
+					<execution>
+						<phase>package</phase>
+						<goals>
+							<goal>bundle</goal>
+						</goals>
+					</execution>
+				</executions>
+			</plugin>
+
+			<plugin>
+				<groupId>org.codehaus.mojo</groupId>
+				<artifactId>wagon-maven-plugin</artifactId>
+				<version>1.0-beta-5</version>
+				<executions>
+					<execution>
+						<id>upload</id>
+						<phase>deploy</phase>
+						<goals>
+							<goal>upload</goal>
+						</goals>
+						<configuration>
+							<fromDir>target</fromDir>
+							<includes>getdown/**/*,getdown-applet/**/*,iceclient-app.zip,iceclient.deb,SetupIceclient.exe,iceclient.noarch.rpm</includes>
+							<url>scp://${game.username}@${game.host}${game.dir}</url>
+						</configuration>
+					</execution>
+				</executions>
+			</plugin>
+		</plugins>
+		<pluginManagement>
+			<plugins>
+			</plugins>
+		</pluginManagement>
+	</build>
+
+	<dependencies>
+		<dependency>
+			<groupId>org.icemoon</groupId>
+			<artifactId>iceclient</artifactId>
+			<version>${project.version}</version>
+			<scope>compile</scope>
+		</dependency>
+	</dependencies>
+</project>

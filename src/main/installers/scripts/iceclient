@@ -1,0 +1,12 @@
+#!/bin/bash
+
+CACHE_DIR="${HOME}/.cache/iceclient"
+mkdir -p "${CACHE_DIR}"
+pushd "${CACHE_DIR}"
+for i in /usr/lib/iceclient/* ; do
+	basename="$(basename ${i})"
+	if [ ! -f "${basename}" -a ! -L "${basename}" ]; then
+		ln -s "${i}" . 2>/dev/null
+	fi
+done
+java -jar /usr/lib/iceclient/getdown.jar . $@ 

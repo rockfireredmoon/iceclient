@@ -1,0 +1,16 @@
+[Desktop Entry]
+Type=Application
+Version=1.0
+Name=Iceclient
+Name[en_GB]=Iceclient
+GenericName=Earth Eternal "The Anubian War" Client 
+GenericName[en_GB]=Earth Eternal "The Anubian War" Client 
+Comment=Earth Eternal "The Anubian War" Client 
+Icon=iceclient.png
+TryExec=iceclient
+Exec=iceclient
+Terminal=false
+# Categorie entry according to version 1.0 of
+# http://www.freedesktop.org/wiki/Specifications/menu-spec
+Categories=GNOME;Games;
+Encoding=UTF-8

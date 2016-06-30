@@ -1,0 +1,13 @@
+[Desktop Entry]
+Type=Application
+Name=Iceclient (URL Handler)
+Name[en_GB]=Iceclient (URL Handler)
+GenericName=Earth Eternal "The Anubian War" Client  (URL Handler)
+GenericName[en_GB]=Earth Eternal "The Anubian War" Client  (URL Handler)
+Comment=Earth Eternal "The Anubian War" Client  (URL Handler)
+Icon=iceclient.png
+Exec=iceclient iceclient -a %U ${game.assetUrl}
+StartupNotify=false
+MimeType=x-scheme-handler/taw;
+Categories=GNOME;Games;
+Encoding=UTF-8
