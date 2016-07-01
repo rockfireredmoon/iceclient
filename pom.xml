@@ -8,7 +8,6 @@
 		<groupId>org.icemoon</groupId>
 		<artifactId>ice</artifactId>
 		<version>0.0.1-SNAPSHOT</version>
-		<relativePath>../ice</relativePath>
 	</parent>
 	<build>
 	</build>
