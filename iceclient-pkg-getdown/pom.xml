@@ -35,7 +35,7 @@
 							<outputDirectory>${basedir}/target/applications</outputDirectory>
 							<resources>
 								<resource>
-									<directory>${basedir}/../iceclient-group/src/main/installers/applications</directory>
+									<directory>${basedir}/../src/main/installers/applications</directory>
 									<includes>
 										<include>**/*.desktop</include>
 									</includes>
@@ -88,10 +88,10 @@
 							<ui>
 								<name>Iceclient</name>
 								<icons>
-									<icon>${basedir}/../iceclient-group/src/main/installers/images/iceclient.png</icon>
+									<icon>${basedir}/../src/main/installers/images/iceclient.png</icon>
 								</icons>
-								<progressImage>${basedir}/../iceclient-group/src/main/installers/images/progress.png</progressImage>
-								<backgroundImage>${basedir}/../iceclient-group/src/main/installers/images/splash.png</backgroundImage>
+								<progressImage>${basedir}/../src/main/installers/images/progress.png</progressImage>
+								<backgroundImage>${basedir}/../src/main/installers/images/splash.png</backgroundImage>
 								<progress>80, 244, 196, 11</progress>
 								<progressText>FFFFFF</progressText>
 								<statusText>FFFFFF</statusText>
@@ -99,6 +99,7 @@
 								<textShadow>111111</textShadow>
 							</ui>
 
+							<!--
 							<sign>
 								<keystore>${signingFiles}/${certificate.keystore}</keystore>
 								<keypass>${certificate.password}</keypass>
@@ -107,6 +108,7 @@
 								<alias>${certificate.alias}</alias>
 								<verify>true</verify>
 							</sign>
+							-->
 
 						</configuration>
 					</execution>
@@ -154,7 +156,7 @@
 						</data>
 						<data>
 							<type>directory</type>
-							<src>${basedir}/../iceclient-group/src/main/installers/scripts</src>
+							<src>${basedir}/../src/main/installers/scripts</src>
 							<includes>*</includes>
 							<mapper>
 								<type>perm</type>
@@ -167,7 +169,7 @@
 						</data>
 						<data>
 							<type>directory</type>
-							<src>${basedir}/../iceclient-group/src/main/installers/images</src>
+							<src>${basedir}/../src/main/installers/images</src>
 							<includes>iceclient.png</includes>
 							<mapper>
 								<type>perm</type>
@@ -234,7 +236,7 @@
 							<directoryIncluded>false</directoryIncluded>
 							<sources>
 								<source>
-									<location>${basedir}/../iceclient-group/src/main/installers/scripts/iceclient</location>
+									<location>${basedir}/../src/main/installers/scripts/iceclient</location>
 								</source>
 							</sources>
 						</mapping>
@@ -261,7 +263,7 @@
 							<groupname>root</groupname>
 							<sources>
 								<source>
-									<location>${basedir}/../iceclient-group/src/main/installers/images/iceclient.png</location>
+									<location>${basedir}/../src/main/installers/images/iceclient.png</location>
 								</source>
 							</sources>
 						</mapping>
@@ -343,7 +345,7 @@
 				<execution> <phase>package</phase> <goals> <goal>bundle</goal> </goals> </execution> 
 				</executions> </plugin> -->
 
-
+			<!--
 			<plugin>
 				<groupId>org.codehaus.mojo</groupId>
 				<artifactId>osxappbundle-maven-plugin</artifactId>
@@ -376,6 +378,7 @@
 					</execution>
 				</executions>
 			</plugin>
+			-->
 
 			<plugin>
 				<groupId>org.codehaus.mojo</groupId>
@@ -390,7 +393,7 @@
 						</goals>
 						<configuration>
 							<fromDir>target</fromDir>
-							<includes>getdown/**/*,getdown-applet/**/*,iceclient-app.zip,iceclient.deb,SetupIceclient.exe,iceclient.noarch.rpm</includes>
+							<includes>getdown/**/*,iceclient-app.zip,iceclient.deb,SetupIceclient.exe,iceclient.noarch.rpm</includes>
 							<url>scp://${game.username}@${game.host}${game.dir}</url>
 						</configuration>
 					</execution>
@@ -406,7 +409,7 @@
 	<dependencies>
 		<dependency>
 			<groupId>org.icemoon</groupId>
-			<artifactId>iceclient</artifactId>
+			<artifactId>iceclient-app</artifactId>
 			<version>${project.version}</version>
 			<scope>compile</scope>
 		</dependency>
