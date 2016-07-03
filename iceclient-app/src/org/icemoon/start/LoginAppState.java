@@ -1,40 +1,27 @@
 package org.icemoon.start;
 
-import java.awt.SplashScreen;
 import java.net.URI;
 import java.util.concurrent.Callable;
-import java.util.concurrent.RejectedExecutionException;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
-import org.apache.commons.lang3.StringUtils;
-import org.icelib.AppInfo;
 import org.icelib.XDesktop;
 import org.icemoon.Config;
-import org.icemoon.Iceclient;
 import org.icemoon.network.NetworkAppState;
 import org.icemoon.network.NetworkListenerAdapter;
-import org.icescene.IcesceneApp;
 import org.iceui.UIConstants;
-import org.iceui.controls.BigButton;
 import org.iceui.controls.BusySpinner;
 import org.iceui.controls.ElementStyle;
 import org.iceui.controls.FancyButton;
-import org.iceui.controls.FancyWindow;
-import org.iceui.controls.FancyWindow.Size;
-import org.iceui.controls.XScreen;
+import org.iceui.controls.LinkButton;
 import org.iceui.controls.XSeparator;
-import org.iceui.effects.EffectHelper;
 
 import com.jme3.app.Application;
-import com.jme3.app.state.AbstractAppState;
 import com.jme3.app.state.AppStateManager;
 import com.jme3.font.BitmapFont;
 import com.jme3.input.KeyInput;
 import com.jme3.input.event.KeyInputEvent;
 import com.jme3.input.event.MouseButtonEvent;
-import com.jme3.math.Vector2f;
-import com.jme3.math.Vector4f;
 
 import icetone.controls.buttons.ButtonAdapter;
 import icetone.controls.buttons.CheckBox;
@@ -42,128 +29,41 @@ import icetone.controls.form.Form;
 import icetone.controls.text.Label;
 import icetone.controls.text.Password;
 import icetone.controls.text.TextField;
-import icetone.core.Container;
 import icetone.core.Element;
 import icetone.core.Element.Orientation;
-import icetone.core.Element.ZPriority;
 import icetone.core.layout.mig.MigLayout;
-import icetone.effects.Effect;
 
-public class LoginAppState extends AbstractAppState {
+public class LoginAppState extends AbstractIntroAppState {
 
 	// TODO make these styles
 	private final static Logger LOG = Logger.getLogger(LoginAppState.class.getName());
-	private Iceclient app;
-	private NetworkAppState network;
-	private Label versionText;
 	private TextField passwordField;
 	private TextField usernameField;
 	private CheckBox rememberMeField;
-	private FancyWindow loginWindow;
-	private XScreen screen;
-	private Element banner;
 	private ButtonAdapter requestButton;
-	private IcesceneApp.AppListener listener;
-	private EffectHelper effectHelper = new EffectHelper();
-	private Element layer;
-	private Element logo;
+	protected NetworkAppState network;
+	private String authToken;
+
+	public LoginAppState() {
+		this(null);
+	}
+
+	public LoginAppState(String authToken) {
+		this.authToken = authToken;
+	}
 
 	@Override
 	public void initialize(AppStateManager stateManager, final Application app) {
 		LOG.info("Preparing login screen");
 
+		this.network = stateManager.getState(NetworkAppState.class);
+
 		super.initialize(stateManager, app);
 
-		this.network = stateManager.getState(NetworkAppState.class);
-		this.app = (Iceclient) app;
-
-		screen = this.app.getScreen();
-
-		// Layer for this appstate
-		layer = new Element(screen);
-		layer.setAsContainerOnly();
-		layer.setLayoutManager(new MigLayout(screen, "fill, wrap 1", "[al center]", "push[]push[]push[]"));
-
-		this.app.addListener(listener = new IcesceneApp.AppListener() {
-			@Override
-			public void reshape(int w, int h) {
-				LOG.info("User reshaped window");
-				LoginAppState.this.app.removeBackgroundPicture();
-				LoginAppState.this.app.setBackgroundPicture(screen.getStyle("Common").getString("loginBackground"));
-			}
-		});
-
-		// Login window
-		loginWindow = new FancyWindow(screen, Size.LARGE, false);
-		loginWindow.setIsMovable(false);
-		loginWindow.setIsResizable(false);
-		loginWindow.setTitle("Login");
-		loginWindow.setManagedHint(false);
-		createWindowForState();
-		loginWindow.sizeToContent();
-
-		// Version text
-		versionText = new Label(screen, "VersionText");
-		ElementStyle.normal(screen, versionText, false, false, true);
-		versionText.setText(String.format("%s %s", AppInfo.getName(), AppInfo.getVersion()));
-
-		// Banner (750x106)
-		banner = new Element(screen, "Banner", Vector2f.ZERO, screen.getStyle("LoginWindow").getVector2f("bannerSize"),
-				Vector4f.ZERO, screen.getStyle("LoginWindow").getString("bannerImg"));
-
-		// Logo
-		logo = new Element(screen, "Logo", Vector2f.ZERO, screen.getStyle("LoginWindow").getVector2f("logoSize"), Vector4f.ZERO,
-				screen.getStyle("LoginWindow").getString("logoImg"));
-
-		// Exit Button
-		BigButton exit = new BigButton(this.app.getScreen()) {
-			@Override
-			public void onButtonMouseLeftUp(MouseButtonEvent evt, boolean toggled) {
-				app.stop();
-			}
-		};
-		exit.setText("Exit");
-
-		// Bottom (version and exit button)
-		Container c = new Container(screen);
-		c.setLayoutManager(new MigLayout(screen, "fill", "[:33%:, al left][:33%:, al center][:33%:, al right]"));
-		c.addChild(logo);
-		c.addChild(versionText);
-		c.addChild(exit);
-
-		// Add to scene
-		layer.addChild(banner);
-		layer.addChild(loginWindow);
-		layer.addChild(c, "growx");
-
-		//
-		// loginWindow.getEffect(Effect.EffectEvent.Hide).setDestroyOnHide(true);
-		// infoPanel.getEffect(Effect.EffectEvent.Hide).setDestroyOnHide(true);
-		// banner.getEffect(Effect.EffectEvent.Hide).setDestroyOnHide(true);
-
-		//
-
-		effectHelper.reveal(loginWindow, Effect.EffectType.FadeIn, null);
-		effectHelper.reveal(banner, Effect.EffectType.FadeIn, null);
-
-		// Background picture
-		this.app.setBackgroundPicture(screen.getStyle("Common").getString("loginBackground"));
-
-		// Add to and set up screen
-		this.app.getLayers(ZPriority.NORMAL).addChild(layer);
 		if (usernameField != null)
 			screen.setTabFocusElement(usernameField);
 
-		// Close the splash screen now if one exists
-		final SplashScreen splash = SplashScreen.getSplashScreen();
-		if (splash != null) {
-			splash.close();
-		}
-
-		// Queue the loading screen to hide
-		LoadScreenAppState.queueHide(this.app);
-
-		if (this.app.getCommandLine().hasOption('a')) {
+		if (authToken != null) {
 			this.app.getWorldLoaderExecutorService().execute(new Runnable() {
 				@Override
 				public void run() {
@@ -171,36 +71,6 @@ public class LoginAppState extends AbstractAppState {
 				}
 			});
 		}
-	}
-
-	@Override
-	public void cleanup() {
-		app.removeListener(listener);
-		app.removeBackgroundPicture();
-
-		effectHelper.destroy(versionText, Effect.EffectType.FadeOut);
-		effectHelper.destroy(banner, Effect.EffectType.FadeOut);
-		effectHelper.destroy(loginWindow, Effect.EffectType.FadeOut);
-
-		try {
-			app.getAlarm().timed(new Callable<Void>() {
-				@Override
-				public Void call() throws Exception {
-					app.getLayers(ZPriority.NORMAL).removeChild(layer);
-					return null;
-				}
-			}, UIConstants.UI_EFFECT_TIME + 0.1f);
-		} catch (RejectedExecutionException ree) {
-			// Happens on shutdown
-			app.getLayers(ZPriority.NORMAL).removeChild(layer);
-		}
-
-	}
-
-	public void onStartScreen() {
-	}
-
-	public void onEndScreen() {
 	}
 
 	public void login() {
@@ -255,7 +125,7 @@ public class LoginAppState extends AbstractAppState {
 
 	}
 
-	private void createWindowForState() {
+	protected void createWindowForState() {
 		if (app.getCommandLine().hasOption('a')) {
 			createAuthenticateWithServiceWindow();
 		} else {
@@ -263,19 +133,8 @@ public class LoginAppState extends AbstractAppState {
 		}
 	}
 
-	private void createBusyWindow(String text) {
-		Element contentArea = loginWindow.getContentArea();
-		contentArea.removeAllChildren();
-		final MigLayout layout = new MigLayout(screen, "fill", "push[][]push", "push[]push"); // NOI18N
-		contentArea.setLayoutManager(layout);
-		final BusySpinner busySpinner = new BusySpinner(screen);
-		busySpinner.setSpeed(UIConstants.SPINNER_SPEED);
-		contentArea.addChild(busySpinner);
-		contentArea.addChild(new Label(text, screen));
-	}
-
 	private void createAuthenticateWithServiceWindow() {
-		Element contentArea = loginWindow.getContentArea();
+		Element contentArea = contentWindow.getContentArea();
 		contentArea.removeAllChildren();
 		final MigLayout layout = new MigLayout(screen, "fill", "push[][]push", "push[]push"); // NOI18N
 		contentArea.setLayoutManager(layout);
@@ -286,7 +145,7 @@ public class LoginAppState extends AbstractAppState {
 	}
 
 	private void createLoginWindow() {
-		Element contentArea = loginWindow.getContentArea();
+		Element contentArea = contentWindow.getContentArea();
 		contentArea.removeAllChildren();
 		Label label;
 		final MigLayout layout = new MigLayout(screen, "wrap 2", "", ""); // NOI18N
@@ -303,6 +162,7 @@ public class LoginAppState extends AbstractAppState {
 				}
 			}
 		};
+		
 		contentArea.addChild(new Label("New to Earth Eternal - Anubian War?"), "span 2, ax 50%");
 		contentArea.addChild(requestButton, "span 2, ax 50%");
 		contentArea.addChild(new XSeparator(screen, Orientation.HORIZONTAL), "span 2, ax 50%");
@@ -334,6 +194,22 @@ public class LoginAppState extends AbstractAppState {
 		};
 		contentArea.addChild(ElementStyle.medium(screen, passwordField), "w 200");
 
+		if (app.getCommandLine().getArgList().isEmpty()) {
+
+			
+			contentArea.addChild(new XSeparator(screen, Orientation.HORIZONTAL), "span 2, ax 50%");
+			contentArea.addChild(new Label(network.getGameServer().getDisplayAddress()), "span 2, ax 50%");
+			LinkButton lb = new LinkButton("Choose another server", screen) {
+				@Override
+				public void onButtonMouseLeftUp(MouseButtonEvent evt, boolean toggled) {
+					app.getStateManager().detach(LoginAppState.this);
+					app.getStateManager().detach(network);
+					app.getStateManager().attach(new ServerSelectAppState());
+				}
+			};
+			contentArea.addChild(ElementStyle.small(lb), "span 2, ax 50%");
+		}
+
 		// Remember me
 		rememberMeField = new CheckBox(screen);
 		rememberMeField.setLabelText("Remember me");
@@ -363,5 +239,10 @@ public class LoginAppState extends AbstractAppState {
 			passwordField.setText(Config.get().get(Config.LOGIN_PASSWORD, ""));
 			rememberMeField.setIsChecked(true);
 		}
+	}
+
+	@Override
+	protected String getTitle() {
+		return "Login";
 	}
 }

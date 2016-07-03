@@ -58,7 +58,9 @@
 						<goals>
 							<goal>updates</goal>
 							<goal>stub</goal>
+							<!-- 
 							<goal>applet</goal>
+							 -->
 						</goals>
 						<configuration>
 							<appbase>${game.home}/getdown</appbase>
@@ -75,12 +77,16 @@
 							<ignoreMissingMain>true</ignoreMissingMain>
 							<appargs>
 								<apparg>${game.assetUrl}</apparg>
+								<apparg>-s</apparg>
+								<apparg>${game.simulatorAddress}</apparg>
 							</appargs>
 							<altAppargs>
 								<apparg>
 									<appid>iceclient</appid>
 									<appargs>
 										<apparg>${game.assetUrl}</apparg>
+										<apparg>-s</apparg>
+										<apparg>${game.simulatorAddress}</apparg>
 									</appargs>
 								</apparg>
 							</altAppargs>

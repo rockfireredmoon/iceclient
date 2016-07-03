@@ -1,7 +1,5 @@
 package org.icemoon;
 
-import java.util.Arrays;
-import java.util.List;
 import java.util.prefs.PreferenceChangeEvent;
 
 import org.apache.commons.cli.CommandLine;
@@ -14,6 +12,7 @@ import org.icemoon.network.NetworkAppState;
 import org.icemoon.start.AudioVideoOptionsAppState;
 import org.icemoon.start.LoadScreenAppState;
 import org.icemoon.start.LoginAppState;
+import org.icemoon.start.ServerSelectAppState;
 import org.icemoon.tools.impl.AbilitiesTool;
 import org.icemoon.tools.impl.AddEnvironmentDomeTool;
 import org.icemoon.tools.impl.AddLightTool;
@@ -72,8 +71,6 @@ public class Iceclient extends IcesceneApp implements ActionListener {
 	public static void main(String[] args) throws Exception {
 		AppInfo.context = Iceclient.class;
 
-		final List<String> argList = Arrays.asList(args);
-
 		// Parse command line
 		Options opts = createOptions();
 		opts.addOption("s", "simulator", true,
@@ -89,14 +86,9 @@ public class Iceclient extends IcesceneApp implements ActionListener {
 		Assets.addOptions(opts);
 		CommandLine cmdLine = parseCommandLine(opts, args);
 
-		// A single argument must be supplied, the URL (which is used to
-		// deterime router, which in turn locates simulator)
-		if (cmdLine.getArgList().isEmpty()) {
-			throw new Exception("No URL supplied.");
-		}
-
 		Iceclient app = new Iceclient(cmdLine);
-		startApp(app, cmdLine, "PlanetForever - " + AppInfo.getName() + " - " + AppInfo.getVersion(), Constants.APPSETTINGS_NAME);
+		startApp(app, cmdLine, "PlanetForever - " + AppInfo.getName() + " - " + AppInfo.getVersion(),
+				Constants.APPSETTINGS_NAME);
 	}
 
 	private ToolManager toolManager;
@@ -139,7 +131,6 @@ public class Iceclient extends IcesceneApp implements ActionListener {
 		stateManager.attach(new AudioVideoOptionsAppState());
 		stateManager.attach(new ModifierKeysAppState());
 		stateManager.attach(new ConsoleAppState(prefs));
-		stateManager.attach(new LoginAppState());
 
 		// The load screen. We start off manually controlling this
 		final LoadScreenAppState loadScreenAppState = new LoadScreenAppState();
@@ -155,7 +146,14 @@ public class Iceclient extends IcesceneApp implements ActionListener {
 		stateManager.attach(new HUDMessageAppState());
 
 		// Start the network
-		stateManager.attach(new NetworkAppState());
+
+		if (getCommandLine().getArgList().isEmpty()) {
+			stateManager.attach(new ServerSelectAppState());
+		} else {
+			String authToken = getCommandLine().hasOption('a') ? getCommandLine().getOptionValue('a') : null;
+			stateManager.attach(new LoginAppState(authToken));
+			stateManager.attach(new NetworkAppState());
+		}
 		// stateManager.attach(new FakeNetworkLayer());
 
 		// Play initial music
@@ -208,7 +206,8 @@ public class Iceclient extends IcesceneApp implements ActionListener {
 		objectsCategory.addTool(new GridTool(this));
 
 		// Build - Props
-		final ToolCategory propsCategory = new ToolCategory(GameHudType.BUILD, "Add", "Add props and other world objects", 1);
+		final ToolCategory propsCategory = new ToolCategory(GameHudType.BUILD, "Add",
+				"Add props and other world objects", 1);
 		toolManager.addCategory(propsCategory);
 		propsCategory.addTool(new AddLightTool(this));
 		propsCategory.addTool(new AddEnvironmentDomeTool(this));
@@ -232,34 +231,36 @@ public class Iceclient extends IcesceneApp implements ActionListener {
 
 		// Game quick bars
 
+		toolManager.addToolBox(GameHudType.GAME, new ToolBox("Quickbar1", "Quickbar (Ctrl hotkey)", 2, 8)
+				.setDefaultVerticalPosition(BitmapFont.VAlign.Top).setDefaultHorizontalPosition(BitmapFont.Align.Left)
+				.setStyle(ToolBox.Style.Tools).setDefaultVisible(false).setModifiers(ModifierKeysAppState.CTRL_MASK));
+		toolManager.addToolBox(GameHudType.GAME, new ToolBox("Quickbar2", "Quickbar (Shift hotkey)", 3, 8)
+				.setDefaultVerticalPosition(BitmapFont.VAlign.Top).setDefaultHorizontalPosition(BitmapFont.Align.Center)
+				.setStyle(ToolBox.Style.Tools).setDefaultVisible(false).setModifiers(ModifierKeysAppState.SHIFT_MASK));
+		toolManager.addToolBox(GameHudType.GAME, new ToolBox("Quickbar3", "Quickbar (Alt hotkey)", 4, 8)
+				.setDefaultVerticalPosition(BitmapFont.VAlign.Top).setDefaultHorizontalPosition(BitmapFont.Align.Right)
+				.setStyle(ToolBox.Style.Tools).setDefaultVisible(false).setModifiers(ModifierKeysAppState.ALT_MASK));
+		toolManager.addToolBox(GameHudType.GAME, new ToolBox("Quickbar4", "Quickbar (Ctrl+Alt hotkey)", 5, 8)
+				.setDefaultVerticalPosition(BitmapFont.VAlign.Center)
+				.setDefaultHorizontalPosition(BitmapFont.Align.Left).setStyle(ToolBox.Style.Tools)
+				.setDefaultVisible(false).setModifiers(ModifierKeysAppState.CTRL_MASK | ModifierKeysAppState.ALT_MASK));
 		toolManager.addToolBox(GameHudType.GAME,
-				new ToolBox("Quickbar1", "Quickbar (Ctrl hotkey)", 2, 8).setDefaultVerticalPosition(BitmapFont.VAlign.Top)
-						.setDefaultHorizontalPosition(BitmapFont.Align.Left).setStyle(ToolBox.Style.Tools).setDefaultVisible(false)
-						.setModifiers(ModifierKeysAppState.CTRL_MASK));
-		toolManager.addToolBox(GameHudType.GAME,
-				new ToolBox("Quickbar2", "Quickbar (Shift hotkey)", 3, 8).setDefaultVerticalPosition(BitmapFont.VAlign.Top)
-						.setDefaultHorizontalPosition(BitmapFont.Align.Center).setStyle(ToolBox.Style.Tools)
-						.setDefaultVisible(false).setModifiers(ModifierKeysAppState.SHIFT_MASK));
-		toolManager.addToolBox(GameHudType.GAME,
-				new ToolBox("Quickbar3", "Quickbar (Alt hotkey)", 4, 8).setDefaultVerticalPosition(BitmapFont.VAlign.Top)
-						.setDefaultHorizontalPosition(BitmapFont.Align.Right).setStyle(ToolBox.Style.Tools).setDefaultVisible(false)
-						.setModifiers(ModifierKeysAppState.ALT_MASK));
-		toolManager.addToolBox(GameHudType.GAME,
-				new ToolBox("Quickbar4", "Quickbar (Ctrl+Alt hotkey)", 5, 8).setDefaultVerticalPosition(BitmapFont.VAlign.Center)
-						.setDefaultHorizontalPosition(BitmapFont.Align.Left).setStyle(ToolBox.Style.Tools).setDefaultVisible(false)
-						.setModifiers(ModifierKeysAppState.CTRL_MASK | ModifierKeysAppState.ALT_MASK));
-		toolManager.addToolBox(GameHudType.GAME,
-				new ToolBox("Quickbar5", "Quickbar (Ctrl+Shift hotkey)", 6, 8).setDefaultVerticalPosition(BitmapFont.VAlign.Center)
-						.setDefaultHorizontalPosition(BitmapFont.Align.Right).setDefaultVisible(false).setStyle(ToolBox.Style.Tools)
+				new ToolBox("Quickbar5", "Quickbar (Ctrl+Shift hotkey)", 6, 8)
+						.setDefaultVerticalPosition(BitmapFont.VAlign.Center)
+						.setDefaultHorizontalPosition(BitmapFont.Align.Right).setDefaultVisible(false)
+						.setStyle(ToolBox.Style.Tools)
 						.setModifiers(ModifierKeysAppState.CTRL_MASK | ModifierKeysAppState.SHIFT_MASK));
 		toolManager.addToolBox(GameHudType.GAME,
 				new ToolBox("Quickbar6", "Quickbar (Ctrl+Alt+Shift hotkey)", 7, 8)
-						.setDefaultVerticalPosition(BitmapFont.VAlign.Center).setDefaultHorizontalPosition(BitmapFont.Align.Center)
-						.setStyle(ToolBox.Style.Tools).setDefaultVisible(false).setModifiers(
-								ModifierKeysAppState.CTRL_MASK | ModifierKeysAppState.ALT_MASK | ModifierKeysAppState.SHIFT_MASK));
+						.setDefaultVerticalPosition(BitmapFont.VAlign.Center)
+						.setDefaultHorizontalPosition(BitmapFont.Align.Center).setStyle(ToolBox.Style.Tools)
+						.setDefaultVisible(false).setModifiers(ModifierKeysAppState.CTRL_MASK
+								| ModifierKeysAppState.ALT_MASK | ModifierKeysAppState.SHIFT_MASK));
 		toolManager.addToolBox(GameHudType.GAME,
-				new ToolBox("Quickbar7", "Quickbar (Alt+Shift hotkey)", 8, 8).setDefaultVerticalPosition(BitmapFont.VAlign.Bottom)
-						.setDefaultHorizontalPosition(BitmapFont.Align.Right).setStyle(ToolBox.Style.Tools).setDefaultVisible(false)
+				new ToolBox("Quickbar7", "Quickbar (Alt+Shift hotkey)", 8, 8)
+						.setDefaultVerticalPosition(BitmapFont.VAlign.Bottom)
+						.setDefaultHorizontalPosition(BitmapFont.Align.Right).setStyle(ToolBox.Style.Tools)
+						.setDefaultVisible(false)
 						.setModifiers(ModifierKeysAppState.SHIFT_MASK | ModifierKeysAppState.ALT_MASK));
 
 		toolManager.addToolBox(GameHudType.GAME,
@@ -271,41 +272,41 @@ public class Iceclient extends IcesceneApp implements ActionListener {
 						.setConfigurable(false).setMoveable(false));
 
 		toolManager.addToolBox(GameHudType.BUILD,
-				new ToolBox("BuildWindows", "Various build windows", 1, 8).setDefaultVerticalPosition(BitmapFont.VAlign.Bottom)
+				new ToolBox("BuildWindows", "Various build windows", 1, 8)
+						.setDefaultVerticalPosition(BitmapFont.VAlign.Bottom)
 						.setDefaultHorizontalPosition(BitmapFont.Align.Right).setStyle(ToolBox.Style.BuildTools)
 						.setConfigurable(false).setMoveable(false));
 
-		toolManager.addToolBox(GameHudType.BUILD,
-				new ToolBox("Buildbar1", "Build Quickbar (Ctrl hotkey)", 2, 8).setDefaultVerticalPosition(BitmapFont.VAlign.Top)
-						.setDefaultHorizontalPosition(BitmapFont.Align.Left).setStyle(ToolBox.Style.Tools).setDefaultVisible(true)
-						.setModifiers(ModifierKeysAppState.CTRL_MASK));
-		toolManager.addToolBox(GameHudType.BUILD,
-				new ToolBox("Buildbar2", "Build Quickbar (Shift hotkey)", 3, 8).setDefaultVerticalPosition(BitmapFont.VAlign.Top)
-						.setDefaultHorizontalPosition(BitmapFont.Align.Center).setStyle(ToolBox.Style.Tools).setDefaultVisible(true)
-						.setModifiers(ModifierKeysAppState.SHIFT_MASK));
-		toolManager.addToolBox(GameHudType.BUILD,
-				new ToolBox("Buildbar3", "Build Quickbar (Alt hotkey)", 4, 8).setDefaultVerticalPosition(BitmapFont.VAlign.Top)
-						.setDefaultHorizontalPosition(BitmapFont.Align.Right).setStyle(ToolBox.Style.Tools).setDefaultVisible(true)
-						.setModifiers(ModifierKeysAppState.ALT_MASK));
-		toolManager.addToolBox(GameHudType.BUILD,
-				new ToolBox("Buildbar4", "Build Quickbar (Ctrl+Alt hotkey)", 5, 8)
-						.setDefaultVerticalPosition(BitmapFont.VAlign.Center).setDefaultHorizontalPosition(BitmapFont.Align.Left)
-						.setStyle(ToolBox.Style.Tools).setDefaultVisible(false)
-						.setModifiers(ModifierKeysAppState.CTRL_MASK | ModifierKeysAppState.ALT_MASK));
+		toolManager.addToolBox(GameHudType.BUILD, new ToolBox("Buildbar1", "Build Quickbar (Ctrl hotkey)", 2, 8)
+				.setDefaultVerticalPosition(BitmapFont.VAlign.Top).setDefaultHorizontalPosition(BitmapFont.Align.Left)
+				.setStyle(ToolBox.Style.Tools).setDefaultVisible(true).setModifiers(ModifierKeysAppState.CTRL_MASK));
+		toolManager.addToolBox(GameHudType.BUILD, new ToolBox("Buildbar2", "Build Quickbar (Shift hotkey)", 3, 8)
+				.setDefaultVerticalPosition(BitmapFont.VAlign.Top).setDefaultHorizontalPosition(BitmapFont.Align.Center)
+				.setStyle(ToolBox.Style.Tools).setDefaultVisible(true).setModifiers(ModifierKeysAppState.SHIFT_MASK));
+		toolManager.addToolBox(GameHudType.BUILD, new ToolBox("Buildbar3", "Build Quickbar (Alt hotkey)", 4, 8)
+				.setDefaultVerticalPosition(BitmapFont.VAlign.Top).setDefaultHorizontalPosition(BitmapFont.Align.Right)
+				.setStyle(ToolBox.Style.Tools).setDefaultVisible(true).setModifiers(ModifierKeysAppState.ALT_MASK));
+		toolManager.addToolBox(GameHudType.BUILD, new ToolBox("Buildbar4", "Build Quickbar (Ctrl+Alt hotkey)", 5, 8)
+				.setDefaultVerticalPosition(BitmapFont.VAlign.Center)
+				.setDefaultHorizontalPosition(BitmapFont.Align.Left).setStyle(ToolBox.Style.Tools)
+				.setDefaultVisible(false).setModifiers(ModifierKeysAppState.CTRL_MASK | ModifierKeysAppState.ALT_MASK));
 		toolManager.addToolBox(GameHudType.BUILD,
 				new ToolBox("Buildbar5", "Build Quickbar (Ctrl+Shift hotkey)", 6, 8)
-						.setDefaultVerticalPosition(BitmapFont.VAlign.Center).setDefaultHorizontalPosition(BitmapFont.Align.Right)
-						.setDefaultVisible(false).setStyle(ToolBox.Style.Tools)
+						.setDefaultVerticalPosition(BitmapFont.VAlign.Center)
+						.setDefaultHorizontalPosition(BitmapFont.Align.Right).setDefaultVisible(false)
+						.setStyle(ToolBox.Style.Tools)
 						.setModifiers(ModifierKeysAppState.CTRL_MASK | ModifierKeysAppState.SHIFT_MASK));
 		toolManager.addToolBox(GameHudType.BUILD,
 				new ToolBox("Buildbar6", "Build Quickbar (Ctrl+Alt+Shift hotkey)", 7, 8)
-						.setDefaultVerticalPosition(BitmapFont.VAlign.Center).setDefaultHorizontalPosition(BitmapFont.Align.Center)
-						.setStyle(ToolBox.Style.Tools).setDefaultVisible(false).setModifiers(
-								ModifierKeysAppState.CTRL_MASK | ModifierKeysAppState.ALT_MASK | ModifierKeysAppState.SHIFT_MASK));
+						.setDefaultVerticalPosition(BitmapFont.VAlign.Center)
+						.setDefaultHorizontalPosition(BitmapFont.Align.Center).setStyle(ToolBox.Style.Tools)
+						.setDefaultVisible(false).setModifiers(ModifierKeysAppState.CTRL_MASK
+								| ModifierKeysAppState.ALT_MASK | ModifierKeysAppState.SHIFT_MASK));
 		toolManager.addToolBox(GameHudType.BUILD,
 				new ToolBox("Buildbar7", "Build Quickbar (Alt+Shift hotkey)", 8, 8)
-						.setDefaultVerticalPosition(BitmapFont.VAlign.Bottom).setDefaultHorizontalPosition(BitmapFont.Align.Right)
-						.setStyle(ToolBox.Style.Tools).setDefaultVisible(false)
+						.setDefaultVerticalPosition(BitmapFont.VAlign.Bottom)
+						.setDefaultHorizontalPosition(BitmapFont.Align.Right).setStyle(ToolBox.Style.Tools)
+						.setDefaultVisible(false)
 						.setModifiers(ModifierKeysAppState.SHIFT_MASK | ModifierKeysAppState.ALT_MASK));
 	}
 

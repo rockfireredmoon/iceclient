@@ -332,7 +332,8 @@ public class GameAppState extends IcemoonAppState<IcemoonAppState> implements Ti
 		stateManager.getState(LoadScreenAppState.class).setAutoShowOnDownloads(false);
 
 		// Stop loading creatures
-		entityLoader.close();
+		if(entityLoader != null)
+			entityLoader.close();
 
 		// Stop listening for events
 		network.removeListener(networkListener);

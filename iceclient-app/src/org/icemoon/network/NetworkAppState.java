@@ -1,5 +1,6 @@
 package org.icemoon.network;
 
+import java.net.MalformedURLException;
 import java.net.URI;
 import java.net.URISyntaxException;
 import java.util.ArrayList;
@@ -20,12 +21,16 @@ import org.icemoon.start.StartAppState;
 import org.icenet.NetworkException;
 import org.icenet.client.Client;
 import org.icenet.client.ClientListenerAdapter;
+import org.icenet.client.GameServer;
+import org.icenet.client.GameServer.Access;
 import org.icescene.HUDMessageAppState;
 import org.icescene.configuration.TerrainTemplateConfiguration;
 
 import com.jme3.app.Application;
 import com.jme3.app.state.AbstractAppState;
 import com.jme3.app.state.AppStateManager;
+
+import icemoon.iceloader.locators.ServerLocator;
 
 public class NetworkAppState extends AbstractAppState {
 
@@ -39,16 +44,54 @@ public class NetworkAppState extends AbstractAppState {
 	private EventListenerList listeners = new EventListenerList();
 	private TerrainTemplateConfiguration terrainTemplateConfiguration;
 	private TerrainTemplateConfiguration terrainTemplaterConfiguration;
+	private GameServer gameServer;
+	private String infoUrl;
+
+	public NetworkAppState() {
+	}
+
+	public NetworkAppState(GameServer gameServer) {
+		this.gameServer = gameServer;
+	}
+
+	public GameServer getGameServer() {
+		return gameServer;
+	}
+
+	public String getInfoUrl() {
+		return infoUrl;
+	}
 
 	@Override
 	public final void initialize(AppStateManager stateManager, Application app) {
+		if (gameServer == null) {
+			gameServer = new GameServer();
+			gameServer.setAccess(Access.UNKNOWN);
+			if (this.app.getCommandLine().getArgList().isEmpty())
+				throw new IllegalStateException("Must provide an asset URL when not connecting from a server list.");
+			gameServer.setAssetUrl((String) this.app.getCommandLine().getArgList().get(0));
+			gameServer.setDescription("Internal constructed server.");
+			gameServer.setOwner(System.getProperty("user.name"));
+			gameServer.setName("Internal");
+
+			if (this.app.getCommandLine().hasOption('s')) {
+				gameServer.setSimulatorAddress(this.app.getCommandLine().getOptionValue('s'));
+			}
+			try {
+				URI uri = new URI(gameServer.getAssetUrl());
+				infoUrl = uri.getScheme() + "://" + uri.getHost() + (uri.getPort() < 1 ? "" : ":" + uri.getPort());
+			} catch (URISyntaxException e) {
+				infoUrl = gameServer.getAssetUrl();
+			}
+		}
 		this.app = (Iceclient) app;
 		try {
 			connectToClient();
 		} catch (Exception ne) {
 			ne.printStackTrace();
 			LOG.log(Level.SEVERE, "Failed to connect to network.", ne);
-			app.getStateManager().getState(HUDMessageAppState.class).message(Level.SEVERE, "Failed to connect to network.", ne);
+			app.getStateManager().getState(HUDMessageAppState.class).message(Level.SEVERE,
+					"Failed to connect to network.", ne);
 		}
 	}
 
@@ -103,8 +146,30 @@ public class NetworkAppState extends AbstractAppState {
 
 	private void connectToClient() throws NetworkException {
 		try {
-			String url = app.getCommandLine().getArgs()[0];
-			client = new Client(new URI(url));
+
+			URI assetUrl = new URI(gameServer.getAssetUrl());
+			try {
+				LOG.info(String.format("Setting asset root to %s", assetUrl));
+				ServerLocator.setServerRoot(assetUrl.toURL());
+			} catch (MalformedURLException e1) {
+				throw new NetworkException(NetworkException.ErrorType.FAILED_TO_CONNECT_TO_ROUTER, "Invalid asset URL.",
+						e1);
+			}
+			String routerAddress = gameServer.getRouterAddress();
+			URI routerUri = assetUrl;
+			if (StringUtils.isNotBlank(routerAddress)) {
+				String host = routerAddress;
+				int idx = host.indexOf(':');
+				int port = 4242;
+				if (idx != -1) {
+					port = Integer.parseInt(host.substring(idx + 1));
+					host = host.substring(0, idx);
+				}
+				routerUri = new URI("router", null, host, port, null, null, null);
+			}
+			String simAddress = gameServer.getSimulatorAddress();
+			client = new Client(routerUri);
+
 			String authUrl = app.getCommandLine().getOptionValue('a');
 			if (StringUtils.isNotBlank(authUrl))
 				client.setAuthToken(authUrl);
@@ -135,16 +200,15 @@ public class NetworkAppState extends AbstractAppState {
 				}
 			});
 
-			if (app.getCommandLine().hasOption('s')) {
+			if (StringUtils.isNotBlank(simAddress)) {
 				// Use may have requested a fixed simulator
-				String host = app.getCommandLine().getOptionValue('s');
-				int idx = host.indexOf(':');
+				int idx = simAddress.indexOf(':');
 				int port = 4300;
 				if (idx != -1) {
-					port = Integer.parseInt(host.substring(idx + 1));
-					host = host.substring(0, idx);
+					port = Integer.parseInt(simAddress.substring(idx + 1));
+					simAddress = simAddress.substring(0, idx);
 				}
-				client.connect(host, port);
+				client.connect(simAddress, port);
 			} else {
 				client.connect();
 			}
