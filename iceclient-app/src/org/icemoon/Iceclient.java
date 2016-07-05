@@ -130,14 +130,13 @@ public class Iceclient extends IcesceneApp implements ActionListener {
 		screen.setUIAudioVolume(audioAppState.getActualUIVolume());
 		stateManager.attach(new AudioVideoOptionsAppState());
 		stateManager.attach(new ModifierKeysAppState());
-		stateManager.attach(new ConsoleAppState(prefs));
 
 		// The load screen. We start off manually controlling this
 		final LoadScreenAppState loadScreenAppState = new LoadScreenAppState();
-		loadScreenAppState.setAutoShowOnDownloads(false);
+		loadScreenAppState.setAutoShowOnDownloads(true);
 		loadScreenAppState.setAutoShowOnTasks(false);
 		stateManager.attach(loadScreenAppState);
-		LoadScreenAppState.show(this);
+//		LoadScreenAppState.show(this);
 
 		// http://hub.jmonkeyengine.org/wiki/doku.php/jme3:contributions:vegetationsystem:grass
 		getRenderManager().setAlphaToCoverage(true);
@@ -153,6 +152,7 @@ public class Iceclient extends IcesceneApp implements ActionListener {
 			String authToken = getCommandLine().hasOption('a') ? getCommandLine().getOptionValue('a') : null;
 			stateManager.attach(new LoginAppState(authToken));
 			stateManager.attach(new NetworkAppState());
+			stateManager.attach(new ConsoleAppState(prefs));
 		}
 		// stateManager.attach(new FakeNetworkLayer());
 

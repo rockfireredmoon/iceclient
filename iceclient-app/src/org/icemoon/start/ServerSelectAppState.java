@@ -2,6 +2,7 @@ package org.icemoon.start;
 
 import java.io.ByteArrayInputStream;
 import java.io.UnsupportedEncodingException;
+import java.net.MalformedURLException;
 import java.net.URL;
 import java.util.concurrent.Callable;
 import java.util.logging.Level;
@@ -12,6 +13,7 @@ import org.icemoon.network.NetworkAppState;
 import org.icenet.client.GameServer;
 import org.icenet.client.ServerListManager;
 import org.icescene.HUDMessageAppState;
+import org.icescene.console.ConsoleAppState;
 import org.icescene.ui.RichTextRenderer;
 import org.iceui.controls.FancyButton;
 
@@ -19,6 +21,8 @@ import com.jme3.app.Application;
 import com.jme3.app.state.AppStateManager;
 import com.jme3.input.event.MouseButtonEvent;
 
+import icemoon.iceloader.ServerAssetManager;
+import icemoon.iceloader.locators.ServerLocator;
 import icetone.controls.lists.Table;
 import icetone.controls.lists.Table.ColumnResizeMode;
 import icetone.controls.lists.Table.SelectionMode;
@@ -221,9 +225,18 @@ public class ServerSelectAppState extends AbstractIntroAppState {
 
 	private void connectToServer() {
 		GameServer gs = getSelectedGameServer();
+		LOG.info(String.format("Setting asset root to %s", gs.getAssetUrl()));
+		try {
+			ServerLocator.setServerRoot(new URL(gs.getAssetUrl()));
+			app.getAssets().setCacheLocationForServerLocator();
+			((ServerAssetManager) app.getAssetManager()).serverAssetLocationChanged();
+		} catch (Exception e) {
+			throw new RuntimeException(e);
+		}
 		app.getStateManager().detach(this);
 		app.getStateManager().attach(new NetworkAppState(gs));
 		app.getStateManager().attach(new LoginAppState());
+		app.getStateManager().attach(new ConsoleAppState(app.getPreferences()));
 	}
 
 	private GameServer getSelectedGameServer() {

@@ -64,6 +64,8 @@ public class NetworkAppState extends AbstractAppState {
 
 	@Override
 	public final void initialize(AppStateManager stateManager, Application app) {
+		this.app = (Iceclient) app;
+		
 		if (gameServer == null) {
 			gameServer = new GameServer();
 			gameServer.setAccess(Access.UNKNOWN);
@@ -84,7 +86,6 @@ public class NetworkAppState extends AbstractAppState {
 				infoUrl = gameServer.getAssetUrl();
 			}
 		}
-		this.app = (Iceclient) app;
 		try {
 			connectToClient();
 		} catch (Exception ne) {
@@ -148,13 +149,6 @@ public class NetworkAppState extends AbstractAppState {
 		try {
 
 			URI assetUrl = new URI(gameServer.getAssetUrl());
-			try {
-				LOG.info(String.format("Setting asset root to %s", assetUrl));
-				ServerLocator.setServerRoot(assetUrl.toURL());
-			} catch (MalformedURLException e1) {
-				throw new NetworkException(NetworkException.ErrorType.FAILED_TO_CONNECT_TO_ROUTER, "Invalid asset URL.",
-						e1);
-			}
 			String routerAddress = gameServer.getRouterAddress();
 			URI routerUri = assetUrl;
 			if (StringUtils.isNotBlank(routerAddress)) {
