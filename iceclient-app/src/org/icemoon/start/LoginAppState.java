@@ -9,6 +9,7 @@ import org.icelib.XDesktop;
 import org.icemoon.Config;
 import org.icemoon.network.NetworkAppState;
 import org.icemoon.network.NetworkListenerAdapter;
+import org.icescene.console.ConsoleAppState;
 import org.iceui.UIConstants;
 import org.iceui.controls.BusySpinner;
 import org.iceui.controls.ElementStyle;
@@ -162,7 +163,7 @@ public class LoginAppState extends AbstractIntroAppState {
 				}
 			}
 		};
-		
+
 		contentArea.addChild(new Label("New to Earth Eternal - Anubian War?"), "span 2, ax 50%");
 		contentArea.addChild(requestButton, "span 2, ax 50%");
 		contentArea.addChild(new XSeparator(screen, Orientation.HORIZONTAL), "span 2, ax 50%");
@@ -196,12 +197,14 @@ public class LoginAppState extends AbstractIntroAppState {
 
 		if (app.getCommandLine().getArgList().isEmpty()) {
 
-			
 			contentArea.addChild(new XSeparator(screen, Orientation.HORIZONTAL), "span 2, ax 50%");
 			contentArea.addChild(new Label(network.getGameServer().getDisplayAddress()), "span 2, ax 50%");
 			LinkButton lb = new LinkButton("Choose another server", screen) {
 				@Override
 				public void onButtonMouseLeftUp(MouseButtonEvent evt, boolean toggled) {
+					ConsoleAppState cas = app.getStateManager().getState(ConsoleAppState.class);
+					if (cas != null)
+						app.getStateManager().detach(cas);
 					app.getStateManager().detach(LoginAppState.this);
 					app.getStateManager().detach(network);
 					app.getStateManager().attach(new ServerSelectAppState());
