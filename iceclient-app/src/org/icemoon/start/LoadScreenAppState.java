@@ -334,6 +334,7 @@ public class LoadScreenAppState extends IcemoonAppState<IcemoonAppState<?>>
 			@Override
 			public Void call() throws Exception {
 				LOG.info(String.format("Download of %s complete", key));
+				setProgressValues();
 				downloading.remove(key.getName());
 				LOG.info(String.format("downloadComplete(%s, %d, %d)", showing, downloading.size(),
 						app.getWorldLoaderExecutorService().getTotal()));
@@ -341,7 +342,6 @@ public class LoadScreenAppState extends IcemoonAppState<IcemoonAppState<?>>
 						&& app.getWorldLoaderExecutorService().getTotal() == 0) {
 					maybeHide();
 				}
-				setProgressValues();
 				return null;
 			}
 		});
