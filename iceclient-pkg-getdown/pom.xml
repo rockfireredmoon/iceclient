@@ -75,7 +75,7 @@
 							<!-- This is a pom project, so the Main won't be in this artifact. 
 								Future versions may not have this problem -->
 							<ignoreMissingMain>true</ignoreMissingMain>
-							<appargs>
+							<!-- <appargs>
 								<apparg>${game.assetUrl}</apparg>
 								<apparg>-s</apparg>
 								<apparg>${game.simulatorAddress}</apparg>
@@ -89,7 +89,7 @@
 										<apparg>${game.simulatorAddress}</apparg>
 									</appargs>
 								</apparg>
-							</altAppargs>
+							</altAppargs> -->
 
 							<ui>
 								<name>Iceclient</name>

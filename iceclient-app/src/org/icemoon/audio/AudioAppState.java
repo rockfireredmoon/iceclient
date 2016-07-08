@@ -5,9 +5,7 @@ import java.util.logging.Logger;
 import java.util.prefs.Preferences;
 
 import org.icemoon.Config;
-import org.icemoon.start.AudioVideoToolButtons;
 import org.icescene.audio.AudioQueue;
-import org.icescene.audio.QueuedAudio;
 
 public class AudioAppState extends org.icescene.audio.AudioAppState {
 
@@ -20,6 +18,7 @@ public class AudioAppState extends org.icescene.audio.AudioAppState {
     @Override
     protected void postInitialize() {
         super.postInitialize();
+        
         // Play lobby music if any
         String music = Config.get().get(Config.AUDIO_START_MUSIC, Config.AUDIO_START_MUSIC_DEFAULT);
         if (music != null && music.length() > 0) {

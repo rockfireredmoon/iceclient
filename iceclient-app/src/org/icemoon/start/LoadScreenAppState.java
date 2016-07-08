@@ -121,6 +121,89 @@ public class LoadScreenAppState extends IcemoonAppState<IcemoonAppState<?>>
 
 	@Override
 	protected void postInitialize() {
+		
+
+
+		loadScreen = new Element(screen, UIDUtil.getUID(), Vector4f.ZERO,
+				screen.getStyle("Common").getString("loadBackground"));
+		loadScreen.setIgnoreGlobalAlpha(true);
+		loadScreen.setIgnoreMouse(false);
+		loadScreen.setGlobalAlpha(1);
+		loadScreen.setLayoutManager(
+				new MigLayout(screen, "fill, wrap 1", "push[400:600:800]push", "push[:100:][:100:][:140:]"));
+
+		// Announcements
+		Panel announcements = new Panel(screen);
+		announcements.setLayoutManager(new MigLayout(screen, "fill, wrap 1", "[fill, grow]", "[:40:][:60:]"));
+		announcements.setIsResizable(false);
+		announcements.setIsMovable(false);
+		Label l = new Label("Announcements", screen);
+		ElementStyle.medium(screen, l);
+		ElementStyle.altColor(screen, l);
+		l.setTextAlign(BitmapFont.Align.Center);
+		l.setTextWrap(LineWrapMode.Word);
+		announcements.addChild(l, "");
+		l = new Label("Welcome To Planet Forever", screen);
+		l.setTextAlign(BitmapFont.Align.Center);
+		l.setTextWrap(LineWrapMode.Word);
+		announcements.addChild(l);
+		announcements.sizeToContent();
+		loadScreen.addChild(announcements, "growx");
+
+		// Tips
+		Panel tipsPanel = new Panel(screen);
+		tipsPanel.setLayoutManager(new MigLayout(screen, "wrap 2, fill", "[]32[grow]", "[:32:]"));
+		tipsPanel.setIsResizable(false);
+		tipsPanel.setIsMovable(false);
+		UIButton icon = new UIButton(screen);
+		icon.setButtonIcon(32, 32, screen.getStyle("Common").getString("chatImg"));
+		tipsPanel.addChild(icon, "shrink 0");
+		tipText = new Label("Watch for messages here, hints and tips will be displayed to help you on your way. ", screen);
+		tipText.setTextAlign(BitmapFont.Align.Left);
+		tipText.setTextWrap(LineWrapMode.Word);
+		tipsPanel.addChild(tipText, "shrink 100");
+		loadScreen.addChild(tipsPanel, "growx");
+
+		// Progress title bar
+		Container progressTitle = new Container(screen);
+		progressTitle.setLayoutManager(new BorderLayout());
+		l = new Label("Loading", screen);
+		ElementStyle.altColor(screen, l);
+		ElementStyle.medium(screen, l);
+		l.setTextAlign(BitmapFont.Align.Left);
+		l.setTextWrap(LineWrapMode.Word);
+		progressTitle.addChild(l, BorderLayout.Border.WEST);
+		final BusySpinner busySpinner = new BusySpinner(screen);
+		busySpinner.setSpeed(UIConstants.SPINNER_SPEED);
+		progressTitle.addChild(busySpinner, BorderLayout.Border.EAST);
+
+		// Progress window
+		Panel progress = new Panel(screen);
+		progress.setLayoutManager(new MigLayout(screen, "fill, wrap 1", "[]", "[][]"));
+		progress.setIsResizable(false);
+		progress.setIsMovable(false);
+		progress.addChild(progressTitle, "growx, wrap");
+		overallProgress = new Indicator(screen, Element.Orientation.HORIZONTAL);
+		overallProgress.setMaxValue(0);
+		overallProgress.setCurrentValue(0);
+		progress.addChild(overallProgress, "shrink 0, growx, wrap");
+
+		// Bottom progress
+		Container bottom = new Container(screen);
+		bottom.setLayoutManager(new BorderLayout());
+		loadScreen.addChild(progress, "growx");
+		loadText = new Label("Busy", screen);
+		loadText.setTextAlign(BitmapFont.Align.Left);
+		ElementStyle.normal(screen, loadText, false, false, true);
+		bottom.addChild(loadText, BorderLayout.Border.CENTER);
+		fileProgress = new Indicator(screen, Element.Orientation.HORIZONTAL);
+		fileProgress.setIndicatorColor(ColorRGBA.Green);
+		fileProgress.setPreferredDimensions(new Vector2f(150, 20));
+		fileProgress.setMaxValue(100);
+		fileProgress.setCurrentValue(0);
+		bottom.addChild(fileProgress, BorderLayout.Border.EAST);
+		progress.addChild(bottom, "growx");
+		
 		network = stateManager.getState(NetworkAppState.class);
 		app.getAssetManager().addAssetEventListener(this);
 		((ServerAssetManager) app.getAssetManager()).addDownloadingListener(this);
@@ -164,86 +247,6 @@ public class LoadScreenAppState extends IcemoonAppState<IcemoonAppState<?>>
 		if (!showing) {
 			LOG.info("Showing load screen");
 			if (app != null) {
-
-				loadScreen = new Element(screen, UIDUtil.getUID(), Vector4f.ZERO,
-						screen.getStyle("Common").getString("loadBackground"));
-				loadScreen.setIgnoreGlobalAlpha(true);
-				loadScreen.setIgnoreMouse(false);
-				loadScreen.setGlobalAlpha(1);
-				loadScreen.setLayoutManager(
-						new MigLayout(screen, "fill, wrap 1", "push[400:600:800]push", "push[:100:][:100:][:140:]"));
-
-				// Announcements
-				Panel announcements = new Panel(screen);
-				announcements.setLayoutManager(new MigLayout(screen, "fill, wrap 1", "[fill, grow]", "[:40:][:60:]"));
-				announcements.setIsResizable(false);
-				announcements.setIsMovable(false);
-				Label l = new Label("Announcements", screen);
-				ElementStyle.medium(screen, l);
-				ElementStyle.altColor(screen, l);
-				l.setTextAlign(BitmapFont.Align.Center);
-				l.setTextWrap(LineWrapMode.Word);
-				announcements.addChild(l, "");
-				l = new Label("Welcome To Planet Forever", screen);
-				l.setTextAlign(BitmapFont.Align.Center);
-				l.setTextWrap(LineWrapMode.Word);
-				announcements.addChild(l);
-				announcements.sizeToContent();
-				loadScreen.addChild(announcements, "growx");
-
-				// Tips
-				Panel tipsPanel = new Panel(screen);
-				tipsPanel.setLayoutManager(new MigLayout(screen, "wrap 2, fill", "[]32[grow]", "[:32:]"));
-				tipsPanel.setIsResizable(false);
-				tipsPanel.setIsMovable(false);
-				UIButton icon = new UIButton(screen);
-				icon.setButtonIcon(32, 32, screen.getStyle("Common").getString("chatImg"));
-				tipsPanel.addChild(icon, "shrink 0");
-				tipText = new Label("Watch for messages here, hints and tips will be displayed to help you on your way. ", screen);
-				tipText.setTextAlign(BitmapFont.Align.Left);
-				tipText.setTextWrap(LineWrapMode.Word);
-				tipsPanel.addChild(tipText, "shrink 100");
-				loadScreen.addChild(tipsPanel, "growx");
-
-				// Progress title bar
-				Container progressTitle = new Container(screen);
-				progressTitle.setLayoutManager(new BorderLayout());
-				l = new Label("Loading", screen);
-				ElementStyle.altColor(screen, l);
-				ElementStyle.medium(screen, l);
-				l.setTextAlign(BitmapFont.Align.Left);
-				l.setTextWrap(LineWrapMode.Word);
-				progressTitle.addChild(l, BorderLayout.Border.WEST);
-				final BusySpinner busySpinner = new BusySpinner(screen);
-				busySpinner.setSpeed(UIConstants.SPINNER_SPEED);
-				progressTitle.addChild(busySpinner, BorderLayout.Border.EAST);
-
-				// Progress window
-				Panel progress = new Panel(screen);
-				progress.setLayoutManager(new MigLayout(screen, "fill, wrap 1", "[]", "[][]"));
-				progress.setIsResizable(false);
-				progress.setIsMovable(false);
-				progress.addChild(progressTitle, "growx, wrap");
-				overallProgress = new Indicator(screen, Element.Orientation.HORIZONTAL);
-				overallProgress.setMaxValue(0);
-				overallProgress.setCurrentValue(0);
-				progress.addChild(overallProgress, "shrink 0, growx, wrap");
-
-				// Bottom progress
-				Container bottom = new Container(screen);
-				bottom.setLayoutManager(new BorderLayout());
-				loadScreen.addChild(progress, "growx");
-				loadText = new Label("Busy", screen);
-				loadText.setTextAlign(BitmapFont.Align.Left);
-				ElementStyle.normal(screen, loadText, false, false, true);
-				bottom.addChild(loadText, BorderLayout.Border.CENTER);
-				fileProgress = new Indicator(screen, Element.Orientation.HORIZONTAL);
-				fileProgress.setIndicatorColor(ColorRGBA.Green);
-				fileProgress.setPreferredDimensions(new Vector2f(150, 20));
-				fileProgress.setMaxValue(100);
-				fileProgress.setCurrentValue(0);
-				bottom.addChild(fileProgress, BorderLayout.Border.EAST);
-				progress.addChild(bottom, "growx");
 
 				app.setForegroundElement(loadScreen);
 
@@ -416,7 +419,8 @@ public class LoadScreenAppState extends IcemoonAppState<IcemoonAppState<?>>
 	public void update(float tpf) {
 		super.update(tpf);
 		if (targetOverall != -1) {
-			overallProgress.setCurrentValue(targetOverall);
+			if(overallProgress != null)
+				overallProgress.setCurrentValue(targetOverall);
 			targetOverall = -1;
 		}
 	}
@@ -468,5 +472,11 @@ public class LoadScreenAppState extends IcemoonAppState<IcemoonAppState<?>>
 			this.key = key;
 			this.size = size;
 		}
+	}
+
+	@Override
+	public void assetSupplied(AssetKey key) {
+		// TODO Auto-generated method stub
+		
 	}
 }

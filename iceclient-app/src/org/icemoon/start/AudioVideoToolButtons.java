@@ -26,6 +26,7 @@ import icetone.controls.text.Label;
 import icetone.core.Element;
 import icetone.core.ElementManager;
 import icetone.core.Screen;
+import icetone.core.layout.LUtil;
 import icetone.core.layout.mig.MigLayout;
 import icetone.core.utils.UIDUtil;
 import icetone.effects.Effect;
@@ -69,7 +70,7 @@ public class AudioVideoToolButtons extends Element {
 						video.setIsEnabled(true);
 					}
 				};
-				videoPopup.setY(audio.getAbsoluteY() - 10 - videoPopup.getHeight());
+				videoPopup.setY(LUtil.getAbsoluteY(audio) + audio.getHeight());
 				videoPopup.setX(audio.getAbsoluteX() - videoPopup.getWidth() + audio.getWidth());
 				videoPopup.showWithEffect();
 			}
@@ -87,7 +88,7 @@ public class AudioVideoToolButtons extends Element {
 				audio.setIsEnabled(false);
 				audioPopup = new AudioPopup(screen,
 						screen.getApplication().getStateManager().getState(AudioAppState.class));
-				audioPopup.setY(audio.getAbsoluteY() - 10 - audioPopup.getHeight());
+				audioPopup.setY(LUtil.getAbsoluteY(audio) + audio.getHeight());
 				audioPopup.setX(audio.getAbsoluteX() - audioPopup.getWidth() + audio.getWidth());
 				audioPopup.setSelectedMusic(Config.get().get(Config.AUDIO_START_MUSIC, Config.AUDIO_START_MUSIC_DEFAULT));
 				audioPopup.showWithEffect();

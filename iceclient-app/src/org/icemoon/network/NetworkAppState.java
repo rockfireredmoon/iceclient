@@ -3,6 +3,7 @@ package org.icemoon.network;
 import java.net.MalformedURLException;
 import java.net.URI;
 import java.net.URISyntaxException;
+import java.nio.channels.UnresolvedAddressException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.logging.Level;
@@ -89,7 +90,6 @@ public class NetworkAppState extends AbstractAppState {
 		try {
 			connectToClient();
 		} catch (Exception ne) {
-			ne.printStackTrace();
 			LOG.log(Level.SEVERE, "Failed to connect to network.", ne);
 			app.getStateManager().getState(HUDMessageAppState.class).message(Level.SEVERE,
 					"Failed to connect to network.", ne);

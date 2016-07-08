@@ -59,12 +59,12 @@
 			<artifactId>icedesign-app</artifactId>
 			<version>${project.version}</version>
 		</dependency>
-		<dependency>
+		<!-- <dependency>
 			<groupId>org.icemoon</groupId>
 			<artifactId>iceassets</artifactId>
 			<version>${project.version}</version>
 			<scope>provided</scope>
-		</dependency>
+		</dependency> -->
 		<dependency>
 			<groupId>jME3-ext</groupId>
 			<artifactId>projective-texture-mapping</artifactId>
