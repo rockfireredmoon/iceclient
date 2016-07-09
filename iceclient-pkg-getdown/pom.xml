@@ -273,6 +273,21 @@
 						</mapping>
 						<mapping>
 							<directoryIncluded>false</directoryIncluded>
+							<directory>/etc/iceclient</directory>
+							<filemode>755</filemode>
+							<username>root</username>
+							<groupname>root</groupname>
+							<sources>
+								<source>
+									<location>${basedir}/../src/main/installers/configuration</location>
+									<includes>
+										<include>**/*</include>
+									</includes>
+								</source>
+							</sources>
+						</mapping>
+						<mapping>
+							<directoryIncluded>false</directoryIncluded>
 							<directory>/usr/share/pixmaps</directory>
 							<filemode>755</filemode>
 							<username>root</username>

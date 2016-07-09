@@ -84,6 +84,7 @@ Section "Iceclient" Iceclient
   File iceclientsmall.ico
   File iceclientbanner.bmp
   File Readme.txt
+  File ..\..\..\src\main\installers\configuration\logging.properties
   
   ;Store installation folder
   WriteRegStr HKCU "Software\Iceclient" "" $INSTDIR

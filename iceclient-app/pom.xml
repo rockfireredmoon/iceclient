@@ -29,8 +29,6 @@
 			</resource>
 		</resources>
 		<plugins>
-
-
 			<plugin>
 				<groupId>org.codehaus.mojo</groupId>
 				<artifactId>buildnumber-maven-plugin</artifactId>
@@ -58,7 +56,7 @@
 						<manifestEntries>
 							<Main-Class>org.icemoon.Iceclient</Main-Class>
 							<SplashScreen-Image>Textures/splash.png</SplashScreen-Image>
-							<Application-Version>${project.version}${buildNumber}</Application-Version>
+							<Application-Version>${project.version}-${buildNumber}</Application-Version>
 							<Application-Name>Iceclient</Application-Name>
 						</manifestEntries>
 					</archive>

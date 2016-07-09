@@ -87,8 +87,7 @@ public class Iceclient extends IcesceneApp implements ActionListener {
 		CommandLine cmdLine = parseCommandLine(opts, args);
 
 		Iceclient app = new Iceclient(cmdLine);
-		startApp(app, cmdLine, "PlanetForever - " + AppInfo.getName() + " - " + AppInfo.getVersion(),
-				Constants.APPSETTINGS_NAME);
+		startApp(app, cmdLine, AppInfo.getName(), Constants.APPSETTINGS_NAME);
 	}
 
 	private ToolManager toolManager;
@@ -136,7 +135,7 @@ public class Iceclient extends IcesceneApp implements ActionListener {
 		loadScreenAppState.setAutoShowOnDownloads(true);
 		loadScreenAppState.setAutoShowOnTasks(false);
 		stateManager.attach(loadScreenAppState);
-//		LoadScreenAppState.show(this);
+		// LoadScreenAppState.show(this);
 
 		// http://hub.jmonkeyengine.org/wiki/doku.php/jme3:contributions:vegetationsystem:grass
 		getRenderManager().setAlphaToCoverage(true);
