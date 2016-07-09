@@ -417,11 +417,11 @@ public class StartAppState extends IcemoonAppState<IcemoonAppState<?>> {
 			Vector3f loc = creatureEntity.getSpatial().getWorldTranslation().clone();
 			loc.x -= (creatureEntity.getBoundingBox().getXExtent());
 			Vector3f screenCoordinates = app.getCamera().getScreenCoordinates(loc);
-			rotateLeft.setPosition(screenCoordinates.x, screenCoordinates.y);
+			rotateLeft.setPosition(screenCoordinates.x, screen.getHeight() -screenCoordinates.y - 30);
 			loc = creatureEntity.getSpatial().getWorldTranslation().clone();
 			loc.x += (creatureEntity.getBoundingBox().getXExtent());
 			screenCoordinates = app.getCamera().getScreenCoordinates(loc);
-			rotateRight.setPosition(screenCoordinates.x - rotateRight.getWidth(), screenCoordinates.y);
+			rotateRight.setPosition(screenCoordinates.x - rotateRight.getWidth(), screen.getHeight() - screenCoordinates.y - 30);
 			if (!rotateLeft.getIsVisible()) {
 				rotateLeft.showWithEffect();
 				rotateRight.showWithEffect();

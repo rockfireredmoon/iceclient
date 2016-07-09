@@ -19,7 +19,7 @@ public class CharacterPanel extends SelectableItem {
         super(screen);
         this.character = character;
         setIgnoreMouse(true);
-        setLayoutManager(new MigLayout(screen, "ins 0, wrap 1, gap 0", "[grow, fill]", "[align top][align bottom]"));
+        setLayoutManager(new MigLayout(screen, "ins 0, wrap 1, gap 0, fill", "[grow, fill]", "[align top][align bottom]"));
         // Name
         Label nameLabel = new Label(screen);
         nameLabel.setIgnoreMouse(true);

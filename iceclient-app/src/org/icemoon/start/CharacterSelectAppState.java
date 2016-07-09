@@ -88,8 +88,8 @@ public class CharacterSelectAppState extends AbstractLobbyAppState {
 		};
 		// list.setScrollAreaLayout(new MigLayout(screen,
 		// "wrap 1, ins 0, gap 0", "[grow, fill]", "[]"));
-		list.setIsMovable(false);
-		list.setIsResizable(false);
+//		list.setIsMovable(false);
+//		list.setIsResizable(false);
 		contentArea.addChild(list);
 
 		// Buttons
