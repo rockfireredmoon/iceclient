@@ -16,36 +16,32 @@ import com.jme3.asset.AssetManager;
 
 public class Tips extends AbstractConfiguration<List<String>> {
 
-    private static final Logger LOG = Logger.getLogger(Tips.class.getName());
-    private static Tips instance;
-    private final Map<Integer, Integer> xp = new LinkedHashMap<Integer, Integer>();
+	private static final Logger LOG = Logger.getLogger(Tips.class.getName());
+	private static Tips instance;
+	private final Map<Integer, Integer> xp = new LinkedHashMap<Integer, Integer>();
 
-    public static Tips get(AssetManager assetManager) {
-        // TODO can we use AssetManager?
-        if (instance == null) {
-            instance = new Tips(assetManager);
-        }
-        return instance;
-    }
+	public static Tips get(AssetManager assetManager) {
+		// TODO can we use AssetManager?
+		if (instance == null) {
+			instance = new Tips(assetManager);
+		}
+		return instance;
+	}
 
-    private Tips(AssetManager assetManager) {
-        super("Data/Tips.txt", assetManager, new ArrayList<String>());
-    }
-    
-    public String getRandomTip() {
-        return getBackingObject().get((int)(getBackingObject().size() * Math.random()));
-    }
+	private Tips(AssetManager assetManager) {
+		super("Data/Tips.txt", assetManager, new ArrayList<String>());
+	}
 
-    @Override
-    protected void load(InputStream in, List<String> backingObject) throws IOException {
-        BufferedReader reader = new BufferedReader(new InputStreamReader(in));
-        try {
-            String line;
-            while ((line = reader.readLine()) != null) {
-                backingObject.add(line.trim());
-            }
-        } finally {
-            reader.close();
-        }
-    }
+	public String getRandomTip() {
+		return getBackingObject().get((int) (getBackingObject().size() * Math.random()));
+	}
+
+	@Override
+	protected void load(InputStream in, List<String> backingObject) throws IOException {
+		BufferedReader reader = new BufferedReader(new InputStreamReader(in));
+		String line;
+		while ((line = reader.readLine()) != null) {
+			backingObject.add(line.trim());
+		}
+	}
 }

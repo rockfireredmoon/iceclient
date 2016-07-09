@@ -58,9 +58,7 @@
 						<goals>
 							<goal>updates</goal>
 							<goal>stub</goal>
-							<!-- 
-							<goal>applet</goal>
-							 -->
+							<!-- <goal>applet</goal> -->
 						</goals>
 						<configuration>
 							<appbase>${game.home}/getdown</appbase>
@@ -75,21 +73,13 @@
 							<!-- This is a pom project, so the Main won't be in this artifact. 
 								Future versions may not have this problem -->
 							<ignoreMissingMain>true</ignoreMissingMain>
-							<!-- <appargs>
-								<apparg>${game.assetUrl}</apparg>
-								<apparg>-s</apparg>
-								<apparg>${game.simulatorAddress}</apparg>
-							</appargs>
-							<altAppargs>
-								<apparg>
-									<appid>iceclient</appid>
-									<appargs>
-										<apparg>${game.assetUrl}</apparg>
-										<apparg>-s</apparg>
-										<apparg>${game.simulatorAddress}</apparg>
-									</appargs>
-								</apparg>
-							</altAppargs> -->
+							<jvmargs>
+								<jvmarg>-Djava.util.logging.config.file=logging.properties</jvmarg>
+							</jvmargs>
+							<!-- <appargs> <apparg>${game.assetUrl}</apparg> <apparg>-s</apparg> 
+								<apparg>${game.simulatorAddress}</apparg> </appargs> <altAppargs> <apparg> 
+								<appid>iceclient</appid> <appargs> <apparg>${game.assetUrl}</apparg> <apparg>-s</apparg> 
+								<apparg>${game.simulatorAddress}</apparg> </appargs> </apparg> </altAppargs> -->
 
 							<ui>
 								<name>Iceclient</name>
@@ -105,16 +95,10 @@
 								<textShadow>111111</textShadow>
 							</ui>
 
-							<!--
-							<sign>
-								<keystore>${signingFiles}/${certificate.keystore}</keystore>
-								<keypass>${certificate.password}</keypass>
-								<storepass>${certificate.password}</storepass>
-								<storetype>${certificate.storetype}</storetype>
-								<alias>${certificate.alias}</alias>
-								<verify>true</verify>
-							</sign>
-							-->
+							<!-- <sign> <keystore>${signingFiles}/${certificate.keystore}</keystore> 
+								<keypass>${certificate.password}</keypass> <storepass>${certificate.password}</storepass> 
+								<storetype>${certificate.storetype}</storetype> <alias>${certificate.alias}</alias> 
+								<verify>true</verify> </sign> -->
 
 						</configuration>
 					</execution>
@@ -147,6 +131,32 @@
 					<installDir>/usr/lib/iceclient</installDir>
 					<deb>${project.basedir}/target/iceclient.deb</deb>
 					<dataSet>
+						<data>
+							<type>directory</type>
+							<src>target/getdown-stub</src>
+							<includes>*.*</includes>
+							<mapper>
+								<type>perm</type>
+								<strip>1</strip>
+								<prefix>/usr/lib/iceclient</prefix>
+								<user>root</user>
+								<group>root</group>
+								<filemode>755</filemode>
+							</mapper>
+						</data>
+						<data>
+							<type>directory</type>
+							<src>${basedir}/../src/main/installers/configuration</src>
+							<includes>*.*</includes>
+							<mapper>
+								<type>perm</type>
+								<strip>1</strip>
+								<prefix>/etc/iceclient</prefix>
+								<user>root</user>
+								<group>root</group>
+								<filemode>755</filemode>
+							</mapper>
+						</data>
 						<data>
 							<type>directory</type>
 							<src>target/getdown-stub</src>
@@ -351,40 +361,16 @@
 				<execution> <phase>package</phase> <goals> <goal>bundle</goal> </goals> </execution> 
 				</executions> </plugin> -->
 
-			<!--
-			<plugin>
-				<groupId>org.codehaus.mojo</groupId>
-				<artifactId>osxappbundle-maven-plugin</artifactId>
-				<version>1.0-alpha-3-icemoon</version>
-				<configuration>
-					<buildDirectory>target/Iceclient</buildDirectory>
-					<bundleName>Iceclient</bundleName>
-					<zipFile>${basedir}/target/iceclient-app.zip</zipFile>
-					<excludeArtifacts>true</excludeArtifacts>
-					<javaApplicationStub>${basedir}/../ice/stubs/osx-stub</javaApplicationStub>
-					<mainClass>com.threerings.getdown.launcher.GetdownApp</mainClass>
-					<additionalClasspath>
-						<path>getdown.jar</path>
-					</additionalClasspath>
-					<additionalResources>
-						<fileSet>
-							<directory>${basedir}/target/getdown-stub</directory>
-							<includes>
-								<include>**/*</include>
-							</includes>
-						</fileSet>
-					</additionalResources>
-				</configuration>
-				<executions>
-					<execution>
-						<phase>package</phase>
-						<goals>
-							<goal>bundle</goal>
-						</goals>
-					</execution>
-				</executions>
-			</plugin>
-			-->
+			<!-- <plugin> <groupId>org.codehaus.mojo</groupId> <artifactId>osxappbundle-maven-plugin</artifactId> 
+				<version>1.0-alpha-3-icemoon</version> <configuration> <buildDirectory>target/Iceclient</buildDirectory> 
+				<bundleName>Iceclient</bundleName> <zipFile>${basedir}/target/iceclient-app.zip</zipFile> 
+				<excludeArtifacts>true</excludeArtifacts> <javaApplicationStub>${basedir}/../ice/stubs/osx-stub</javaApplicationStub> 
+				<mainClass>com.threerings.getdown.launcher.GetdownApp</mainClass> <additionalClasspath> 
+				<path>getdown.jar</path> </additionalClasspath> <additionalResources> <fileSet> 
+				<directory>${basedir}/target/getdown-stub</directory> <includes> <include>**/*</include> 
+				</includes> </fileSet> </additionalResources> </configuration> <executions> 
+				<execution> <phase>package</phase> <goals> <goal>bundle</goal> </goals> </execution> 
+				</executions> </plugin> -->
 
 			<plugin>
 				<groupId>org.codehaus.mojo</groupId>

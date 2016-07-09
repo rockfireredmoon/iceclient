@@ -29,6 +29,27 @@
 			</resource>
 		</resources>
 		<plugins>
+
+
+			<plugin>
+				<groupId>org.codehaus.mojo</groupId>
+				<artifactId>buildnumber-maven-plugin</artifactId>
+				<version>1.4</version>
+				<configuration>
+					<revisionOnScmFailure>no.scm.config.in.pom</revisionOnScmFailure>
+				</configuration>
+				<executions>
+					<execution>
+						<phase>validate</phase>
+						<goals>
+							<goal>create-timestamp</goal>
+						</goals>
+						<configuration>
+							<timestampPropertyName>buildNumber</timestampPropertyName>
+						</configuration>
+					</execution>
+				</executions>
+			</plugin>
 			<plugin>
 				<groupId>org.apache.maven.plugins</groupId>
 				<artifactId>maven-jar-plugin</artifactId>
@@ -37,6 +58,8 @@
 						<manifestEntries>
 							<Main-Class>org.icemoon.Iceclient</Main-Class>
 							<SplashScreen-Image>Textures/splash.png</SplashScreen-Image>
+							<Application-Version>${project.version}${buildNumber}</Application-Version>
+							<Application-Name>Iceclient</Application-Name>
 						</manifestEntries>
 					</archive>
 				</configuration>
@@ -59,12 +82,12 @@
 			<artifactId>icedesign-app</artifactId>
 			<version>${project.version}</version>
 		</dependency>
-		<dependency>
+		<!-- <dependency>
 			<groupId>org.icemoon</groupId>
 			<artifactId>iceassets</artifactId>
 			<version>${project.version}</version>
 			<scope>provided</scope>
-		</dependency>
+		</dependency> -->
 		<dependency>
 			<groupId>jME3-ext</groupId>
 			<artifactId>projective-texture-mapping</artifactId>
