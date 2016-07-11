@@ -31,6 +31,7 @@ import com.jme3.math.Vector2f;
 
 import icetone.controls.buttons.ButtonAdapter;
 import icetone.controls.text.Label;
+import icetone.controls.text.XHTMLToolTipProvider;
 import icetone.core.Container;
 import icetone.core.Element;
 import icetone.core.layout.mig.MigLayout;
@@ -124,6 +125,7 @@ public class CharacterCreateAppState extends AbstractLobbyAppState {
             Gender g = Gender.MALE;
             button.setButtonIcon(32, 32, String.format("Biped/Biped-%1$s_%2$s/Icon-Biped-%1$s_%2$s.png", Icelib.toEnglish(r),
             		Icelib.toEnglish(g)));
+            button.setToolTipProvider(new XHTMLToolTipProvider());
             button.setToolTipText(getRaceTooltip(r));
             races.addChild(button, "width 38, height 38");
             buttons.put(r, button);
@@ -253,7 +255,7 @@ public class CharacterCreateAppState extends AbstractLobbyAppState {
     }
 
     private String getRaceTooltip(Appearance.Race r) {
-        return Icelib.toEnglish(r) + "\n\n" + getRaceDescription(r);
+        return "<h5>" + Icelib.toEnglish(r) + "</h5><p>" + getRaceDescription(r) + "</p>";
     }
     
     private void reloadIcons() {

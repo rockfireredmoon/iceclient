@@ -52,10 +52,11 @@ public class CharacterDetailAppState extends AbstractLobbyAppState {
 	public void onInitialize() {
 		// Window
 		float ins = 8;
-		panel = new FancyPositionableWindow(screen, "CharacterDetail", new Vector2f(ins, ins), LUtil.LAYOUT_SIZE, Size.LARGE, false);
+		panel = new FancyPositionableWindow(screen, "CharacterDetail", new Vector2f(ins, ins), LUtil.LAYOUT_SIZE,
+				Size.LARGE, false);
 		Element content = panel.getContentArea();
 		panel.setWindowTitle("Character Creation");
-		content.setLayoutManager(new MigLayout(screen, "wrap 1", "[fill, grow]", "[][][][][fill, grow]"));
+		content.setLayoutManager(new MigLayout(screen, "wrap 1", "[fill, grow]", "[][][][fill, grow][]"));
 		panel.setIsMovable(false);
 		panel.setIsResizable(false);
 
@@ -86,13 +87,44 @@ public class CharacterDetailAppState extends AbstractLobbyAppState {
 		//
 		content.addChild(coloursArea, "growx");
 
+		// Slider panel
+		Container c = new Container();
+		c.setLayoutManager(new MigLayout(screen, "wrap 3, fill", "push[]40[]40[]push", "[][grow,:120:]push"));
+		content.addChild(c, "growx");
+
+		// Ear Size
+		l1 = new Label(screen);
+		l1.setText("Ears");
+		ElementStyle.medium(screen, l1);
+		l1.setTextAlign(BitmapFont.Align.Center);
+		c.addChild(l1, "growx");
+
 		// Height
 		l1 = new Label(screen);
 		l1.setText("Height");
 		ElementStyle.medium(screen, l1);
 		l1.setTextAlign(BitmapFont.Align.Center);
-		content.addChild(l1, "growx");
+		c.addChild(l1, "growx");
 
+		// Tail
+		l1 = new Label(screen);
+		l1.setText("Tail");
+		ElementStyle.medium(screen, l1);
+		l1.setTextAlign(BitmapFont.Align.Center);
+		c.addChild(l1, "growx");
+
+		// Ears
+		Slider<Float> ears = new Slider<Float>(screen, Orientation.VERTICAL, true) {
+			@Override
+			public void onChange(Float value) {
+				character.getAppearance().setEarSize(((Float) value));
+				creatureSpatial.updateSize();
+			}
+		};
+		ears.setSliderModel(new FloatRangeSliderModel(0.0f, 2.0f, character.getAppearance().getEarSize(), 0.1f));
+		c.addChild(ears, "ax 50%, growy");
+
+		// Height
 		Slider<Float> height = new Slider<Float>(screen, Orientation.VERTICAL, true) {
 			@Override
 			public void onChange(Float value) {
@@ -100,9 +132,19 @@ public class CharacterDetailAppState extends AbstractLobbyAppState {
 				creatureSpatial.updateSize();
 			}
 		};
-		height.setSliderModel(new FloatRangeSliderModel(0.9f, 1.1f, character.getAppearance().getSize(),
-				0.01f));
-		content.addChild(height, "wmax 24, ax 50%");
+		height.setSliderModel(new FloatRangeSliderModel(0.9f, 1.1f, character.getAppearance().getSize(), 0.1f));
+		c.addChild(height, "ax 50%, growy");
+
+		// Tail
+		Slider<Float> tail = new Slider<Float>(screen, Orientation.VERTICAL, true) {
+			@Override
+			public void onChange(Float value) {
+				character.getAppearance().setTailSize(((Float) value));
+				creatureSpatial.updateSize();
+			}
+		};
+		tail.setSliderModel(new FloatRangeSliderModel(0f, 2f, character.getAppearance().getTailSize(), 0.1f));
+		c.addChild(tail, "ax 50%, growy");
 
 		// Buttons
 		Container buttons = new Container(screen);
@@ -127,7 +169,7 @@ public class CharacterDetailAppState extends AbstractLobbyAppState {
 		next.setText("Next");
 		next.setToolTipText("Move on to the next stage");
 		buttons.addChild(next);
-		content.addChild(buttons, "growy, growx");
+		content.addChild(buttons, "growx");
 
 		// Build, add and show
 		layer.addChild(panel);
@@ -141,7 +183,8 @@ public class CharacterDetailAppState extends AbstractLobbyAppState {
 					app.getStateManager().getState(NetworkAppState.class).getClient().accountTracking(4);
 				} catch (NetworkException ne) {
 					LOG.log(Level.SEVERE, "Failed to set account tracking.", ne);
-					stateManager.getState(HUDMessageAppState.class).message(Level.SEVERE, "Failed to set account tracking.", ne);
+					stateManager.getState(HUDMessageAppState.class).message(Level.SEVERE,
+							"Failed to set account tracking.", ne);
 				}
 			}
 		}.start();
@@ -150,8 +193,7 @@ public class CharacterDetailAppState extends AbstractLobbyAppState {
 	private void addColours(Container coloursArea, boolean primary) {
 		Label l1;
 		// Skin
-		CreatureDefinition def = ((AbstractCreatureEntity<CreatureDefinition>) creatureSpatial)
-				.getDefinition();
+		CreatureDefinition def = ((AbstractCreatureEntity<CreatureDefinition>) creatureSpatial).getDefinition();
 		for (final Map.Entry<String, Skin> skinEn : def.getSkin().entrySet()) {
 			Skin skin = skinEn.getValue();
 			if (skin.isPrimary() == primary) {

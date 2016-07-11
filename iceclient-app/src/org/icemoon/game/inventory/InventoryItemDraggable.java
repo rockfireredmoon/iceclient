@@ -7,6 +7,8 @@ import org.icenet.InventoryAndEquipment;
 import org.icescene.tools.AbstractDraggable;
 import org.icescene.tools.DragContext;
 
+import com.jme3.math.Vector2f;
+
 import icetone.core.Element;
 import icetone.core.ElementManager;
 import icetone.core.ToolTipProvider;
@@ -33,7 +35,7 @@ public abstract class InventoryItemDraggable extends AbstractDraggable implement
         }
     }
 
-    public Element createToolTip() {
+    public Element createToolTip(Vector2f mouseXY, Element el) {
         return invItem.getItem() == null ? null : new ItemToolTip(screen, invItem.getItem());
     }
 

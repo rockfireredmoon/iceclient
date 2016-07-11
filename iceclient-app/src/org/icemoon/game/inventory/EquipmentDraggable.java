@@ -37,7 +37,7 @@ public abstract class EquipmentDraggable extends AbstractDraggable implements
 	setToolTipText(equipmentItem.getItem().getDisplayName());
     }
 
-    public Element createToolTip() {
+    public Element createToolTip(Vector2f mouseXY, Element el) {
 	return equipmentItem.getItem() == null ? null : new ItemToolTip(screen,
 		equipmentItem.getItem());
     }

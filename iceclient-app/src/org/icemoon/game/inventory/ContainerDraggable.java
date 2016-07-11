@@ -54,7 +54,7 @@ public class ContainerDraggable extends AbstractDraggable implements ToolTipProv
         return false;
     }
 
-    public Element createToolTip() {
+    public Element createToolTip(Vector2f mouseXY, Element el) {
         return bagItem.getItem() == null ? null : new ItemToolTip(screen, bagItem.getItem());
     }
 

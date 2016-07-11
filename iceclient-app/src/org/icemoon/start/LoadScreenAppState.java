@@ -1,16 +1,27 @@
 package org.icemoon.start;
 
+import java.net.MalformedURLException;
+import java.net.URL;
+import java.net.URLConnection;
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.concurrent.Callable;
+import java.util.logging.Level;
 import java.util.logging.Logger;
 
+import org.apache.commons.io.IOUtils;
+import org.apache.commons.lang3.StringUtils;
+import org.icelib.Icelib;
 import org.icelib.QueueExecutor;
 import org.icemoon.Config;
-import org.icemoon.configuration.Tips;
+import org.icemoon.Iceclient;
 import org.icemoon.network.NetworkAppState;
 import org.icenet.Simulator;
+import org.icenet.client.GameServer;
 import org.icescene.Alarm;
 import org.icescene.IcemoonAppState;
 import org.icescene.IcesceneApp;
@@ -26,13 +37,16 @@ import com.jme3.font.LineWrapMode;
 import com.jme3.math.ColorRGBA;
 import com.jme3.math.Vector2f;
 import com.jme3.math.Vector4f;
+import com.jme3.texture.Texture2D;
 
 import icemoon.iceloader.ServerAssetManager;
 import icetone.controls.extras.Indicator;
 import icetone.controls.text.Label;
+import icetone.controls.text.XHTMLLabel;
 import icetone.controls.windows.Panel;
 import icetone.core.Container;
 import icetone.core.Element;
+import icetone.core.Element.ZPriority;
 import icetone.core.layout.BorderLayout;
 import icetone.core.layout.mig.MigLayout;
 import icetone.core.utils.UIDUtil;
@@ -103,11 +117,13 @@ public class LoadScreenAppState extends IcemoonAppState<IcemoonAppState<?>>
 	private int maxRun;
 	private final Map<String, Download> downloading = Collections.synchronizedMap(new HashMap<String, Download>());
 	private float targetOverall;
-	private Label tipText;
-	private Tips tips;
+	private XHTMLLabel tipText;
 	private boolean autoShowOnTasks = true;
 	private boolean autoShowOnDownloads = false;
 	private boolean informServer = false;
+	private GameServer currentGameServer;
+	private XHTMLLabel announcementsText;
+	private List<String> tips = new ArrayList<>();
 
 	public LoadScreenAppState() {
 		super(Config.get());
@@ -121,20 +137,23 @@ public class LoadScreenAppState extends IcemoonAppState<IcemoonAppState<?>>
 
 	@Override
 	protected void postInitialize() {
-		
-
-
-		loadScreen = new Element(screen, UIDUtil.getUID(), Vector4f.ZERO,
-				screen.getStyle("Common").getString("loadBackground"));
+		currentGameServer = ((Iceclient) app).getCurrentGameServer();
+		if (currentGameServer == null) {
+			loadScreen = new Element(screen, UIDUtil.getUID(), Vector4f.ZERO,
+					screen.getStyle("Common").getString("loadBackground"));
+		} else {
+			loadScreen = new Element(screen, UIDUtil.getUID(), Vector4f.ZERO, null);
+			loadServerLoadBackground();
+		}
+		loadScreen.setDefaultColor(ColorRGBA.Black);
 		loadScreen.setIgnoreGlobalAlpha(true);
 		loadScreen.setIgnoreMouse(false);
 		loadScreen.setGlobalAlpha(1);
-		loadScreen.setLayoutManager(
-				new MigLayout(screen, "fill, wrap 1", "push[400:600:800]push", "push[:100:][:100:][:140:]"));
+		loadScreen.setLayoutManager(new MigLayout(screen, "fill, wrap 1", "push[400:600:800]push", "push[][][]"));
 
 		// Announcements
 		Panel announcements = new Panel(screen);
-		announcements.setLayoutManager(new MigLayout(screen, "fill, wrap 1", "[fill, grow]", "[:40:][:60:]"));
+		announcements.setLayoutManager(new MigLayout(screen, "fill, wrap 1", "[fill, grow]", "[][]"));
 		announcements.setIsResizable(false);
 		announcements.setIsMovable(false);
 		Label l = new Label("Announcements", screen);
@@ -143,22 +162,23 @@ public class LoadScreenAppState extends IcemoonAppState<IcemoonAppState<?>>
 		l.setTextAlign(BitmapFont.Align.Center);
 		l.setTextWrap(LineWrapMode.Word);
 		announcements.addChild(l, "");
-		l = new Label("Welcome To Planet Forever", screen);
-		l.setTextAlign(BitmapFont.Align.Center);
-		l.setTextWrap(LineWrapMode.Word);
-		announcements.addChild(l);
+		announcementsText = new XHTMLLabel(screen);
+		setDefaultAnnouncmentsText();
+		// l.setTextAlign(BitmapFont.Align.Center);
+		// l.setTextWrap(LineWrapMode.Word);
+		announcements.addChild(announcementsText);
 		announcements.sizeToContent();
 		loadScreen.addChild(announcements, "growx");
 
 		// Tips
 		Panel tipsPanel = new Panel(screen);
-		tipsPanel.setLayoutManager(new MigLayout(screen, "wrap 2, fill", "[]32[grow]", "[:32:]"));
+		tipsPanel.setLayoutManager(new MigLayout(screen, "wrap 2", "[]32[fill, grow]", "[]"));
 		tipsPanel.setIsResizable(false);
 		tipsPanel.setIsMovable(false);
 		UIButton icon = new UIButton(screen);
 		icon.setButtonIcon(32, 32, screen.getStyle("Common").getString("chatImg"));
 		tipsPanel.addChild(icon, "shrink 0");
-		tipText = new Label("Watch for messages here, hints and tips will be displayed to help you on your way. ", screen);
+		tipText = new XHTMLLabel(screen);
 		tipText.setTextAlign(BitmapFont.Align.Left);
 		tipText.setTextWrap(LineWrapMode.Word);
 		tipsPanel.addChild(tipText, "shrink 100");
@@ -203,7 +223,7 @@ public class LoadScreenAppState extends IcemoonAppState<IcemoonAppState<?>>
 		fileProgress.setCurrentValue(0);
 		bottom.addChild(fileProgress, BorderLayout.Border.EAST);
 		progress.addChild(bottom, "growx");
-		
+
 		network = stateManager.getState(NetworkAppState.class);
 		app.getAssetManager().addAssetEventListener(this);
 		((ServerAssetManager) app.getAssetManager()).addDownloadingListener(this);
@@ -212,6 +232,122 @@ public class LoadScreenAppState extends IcemoonAppState<IcemoonAppState<?>>
 			showing = false;
 			show();
 		}
+	}
+
+	private void setDefaultTipText() {
+		tips.clear();
+		setRandomTip();
+	}
+
+	private void setRandomTip() {
+		tipText.setText(
+				(tips.size() == 0 ? "Watch for messages here, hints and tips will be displayed to help you on your way."
+						: tips.get((int) (tips.size() * Math.random()))));
+	}
+
+	private void setDefaultAnnouncmentsText() {
+		announcementsText.setText("<p style=\"text-align: center;\">Welcome To Earth Eternal</p>");
+	}
+
+	private void loadServerLoadBackground() {
+		String loc = currentGameServer.getInfo();
+		if (StringUtils.isBlank(loc))
+			loc = currentGameServer.getAssetUrl();
+		loc = Icelib.removeTrailingSlashes(loc);
+		try {
+			final URL url = new URL(loc + "/load.jpg");
+			final URL aurl = new URL(loc + "/loading_announcements");
+			final URL turl = new URL(loc + "/tips");
+			final String cacheName = currentGameServer.getName();
+			app.getWorldLoaderExecutorService().execute(new Runnable() {
+				@Override
+				public void run() {
+					// Determine location of BG image
+					try {
+						Texture2D tex = app.loadExternalCachableTexture(url, cacheName, false);
+						app.enqueue(new Callable<Void>() {
+							@Override
+							public Void call() throws Exception {
+								loadScreen.setTexture(tex);
+								return null;
+							}
+						});
+					} catch (Exception e) {
+						LOG.log(Level.SEVERE, "Failed to set load background image.", e);
+						app.enqueue(new Callable<Void>() {
+							@Override
+							public Void call() throws Exception {
+								setDefaultBackground();
+								return null;
+							}
+						});
+					}
+
+					// Announcements
+					try {
+						URLConnection conx = aurl.openConnection();
+						conx.setDoInput(true);
+						final String text = IOUtils.toString(conx.getInputStream());
+						app.enqueue(new Callable<Void>() {
+							@Override
+							public Void call() throws Exception {
+								announcementsText.setText(text);
+								return null;
+							}
+						});
+					} catch (Exception e) {
+						app.enqueue(new Callable<Void>() {
+							@Override
+							public Void call() throws Exception {
+								setDefaultAnnouncmentsText();
+								return null;
+							}
+						});
+					}
+
+					// Tips
+					try {
+						URLConnection conx = turl.openConnection();
+						conx.setDoInput(true);
+						tips.clear();
+						for (String s : IOUtils.toString(conx.getInputStream()).split("<br/>")) {
+							s = s.trim();
+							if (s.length() > 0)
+								tips.add(s);
+						}
+						app.enqueue(new Callable<Void>() {
+							@Override
+							public Void call() throws Exception {
+								setRandomTip();
+								return null;
+							}
+						});
+					} catch (Exception e) {
+						app.enqueue(new Callable<Void>() {
+							@Override
+							public Void call() throws Exception {
+								setDefaultTipText();
+								return null;
+							}
+						});
+					}
+				}
+			});
+		} catch (MalformedURLException murle) {
+			app.enqueue(new Callable<Void>() {
+				@Override
+				public Void call() throws Exception {
+					setDefaultBackground();
+					setDefaultAnnouncmentsText();
+					setRandomTip();
+					return null;
+				}
+			});
+		}
+	}
+
+	private void setDefaultBackground() {
+		loadScreen.setTexture(app.getAssetManager().loadTexture(screen.getStyle("Common").getString("loadBackground")));
 	}
 
 	public boolean isInformServer() {
@@ -243,32 +379,26 @@ public class LoadScreenAppState extends IcemoonAppState<IcemoonAppState<?>>
 	}
 
 	public void show(boolean sendMessage) {
+		GameServer gs = ((Iceclient) app).getCurrentGameServer();
+		if (!Objects.equals(gs, currentGameServer)) {
+			currentGameServer = gs;
+			if (currentGameServer == null) {
+				setDefaultBackground();
+				setDefaultAnnouncmentsText();
+				setDefaultTipText();
+			} else {
+				loadScreen.setTexture(null);
+				tipText.setText("");
+				announcementsText.setText("");
+				loadServerLoadBackground();
+			}
+		}
+
 		cancelHide();
 		if (!showing) {
 			LOG.info("Showing load screen");
 			if (app != null) {
-
-				app.setForegroundElement(loadScreen);
-
-				// Load the tips in a thread and display one as soon as they are
-				// loaded
-				new Thread("LoadTips") {
-					@Override
-					public void run() {
-						tips = Tips.get(assetManager);
-						app.enqueue(new Callable<Void>() {
-							@Override
-							public Void call() throws Exception {
-								tipText.setText(tips.getRandomTip());
-								return null;
-							}
-						});
-					}
-				}.start();
-			} else {
-				if (tips != null) {
-					tipText.setText(tips.getRandomTip());
-				}
+				app.getLayers(ZPriority.FOREGROUND).addChild(loadScreen);
 			}
 			showing = true;
 			if (isNetworkAvailable() && sendMessage) {
@@ -281,10 +411,9 @@ public class LoadScreenAppState extends IcemoonAppState<IcemoonAppState<?>>
 		if (showing) {
 			LOG.info("Hiding load screen");
 			if (app != null) {
-				app.removeForegroundElement();
+				app.getLayers(ZPriority.FOREGROUND).removeChild(loadScreen);
 			}
 			overallProgress.setMaxValue(0);
-			loadScreen.setElementParent(null);
 			showing = false;
 			if (isNetworkAvailable()) {
 				network.getClient().setClientLoading(false);
@@ -323,7 +452,13 @@ public class LoadScreenAppState extends IcemoonAppState<IcemoonAppState<?>>
 		app.enqueue(new Callable<Void>() {
 			@Override
 			public Void call() throws Exception {
-				final Download d = downloading.get(key.getName());
+				Download d = downloading.get(key.getName());
+				if (d == null) {
+					LOG.warning(String.format("Got download progress event without a download started event ",
+							key.getName()));
+					d = new Download(key, -1);
+					downloading.put(key.getName(), d);
+				}
 				d.progress = progress;
 				setProgressValues();
 				return null;
@@ -419,7 +554,7 @@ public class LoadScreenAppState extends IcemoonAppState<IcemoonAppState<?>>
 	public void update(float tpf) {
 		super.update(tpf);
 		if (targetOverall != -1) {
-			if(overallProgress != null)
+			if (overallProgress != null)
 				overallProgress.setCurrentValue(targetOverall);
 			targetOverall = -1;
 		}
@@ -436,7 +571,8 @@ public class LoadScreenAppState extends IcemoonAppState<IcemoonAppState<?>>
 		hideTask = app.getAlarm().timed(new Callable<Void>() {
 			@Override
 			public Void call() throws Exception {
-				if (overallProgress.getMaxValue() > 0 && overallProgress.getCurrentValue() < overallProgress.getMaxValue()) {
+				if (overallProgress.getMaxValue() > 0
+						&& overallProgress.getCurrentValue() < overallProgress.getMaxValue()) {
 					maybeHide();
 					return null;
 				} else {
@@ -455,8 +591,14 @@ public class LoadScreenAppState extends IcemoonAppState<IcemoonAppState<?>>
 		long total = 0;
 		long progress = 0;
 		for (Map.Entry<String, Download> en : downloading.entrySet()) {
-			total += en.getValue().size;
-			progress += en.getValue().progress;
+			long sz = en.getValue().size;
+			if (sz == -1) {
+				total += 1;
+				progress += 1;
+			} else {
+				total += sz;
+				progress += en.getValue().progress;
+			}
 		}
 		fileProgress.setMaxValue(total);
 		fileProgress.setCurrentValue(progress);
@@ -477,6 +619,6 @@ public class LoadScreenAppState extends IcemoonAppState<IcemoonAppState<?>>
 	@Override
 	public void assetSupplied(AssetKey key) {
 		// TODO Auto-generated method stub
-		
+
 	}
 }

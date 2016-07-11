@@ -66,7 +66,8 @@ public class Config extends SceneConfig {
      */
     // Start music
     public final static String AUDIO_START_MUSIC = AUDIO + "Track";
-    public final static String AUDIO_START_MUSIC_DEFAULT = "music-newb2.ogg";
+    public final static String AUDIO_START_MUSIC_SERVER_DEFAULT = "_SERVER_DEFAULT_";
+    public final static String AUDIO_START_MUSIC_DEFAULT = AUDIO_START_MUSIC_SERVER_DEFAULT;
     public final static String AUDIO_PLAYER_MOVEMENT_SOUNDS = SceneConfig.AUDIO + "PlayerMovementSounds";
     public final static boolean AUDIO_PLAYER_MOVEMENT_SOUNDS_DEFAULT = false;
     /*
@@ -86,6 +87,15 @@ public class Config extends SceneConfig {
     public final static String UI_TOOLTIPS = UI + "ToolTips";
     public final static boolean UI_TOOLTIPS_DEFAULT = true;
     // Bloom
+    
+    /*
+     * Server select
+     */
+
+    public final static String SERVER_SELECT = "ServerSelect";
+    public final static String SERVER_SELECT_SERVER = SERVER_SELECT + "Server";
+    public final static String SERVER_SELECT_SERVER_DEFAULT = "Earth Eternal - The Anubian War";
+    
     /*
      * Login
      */

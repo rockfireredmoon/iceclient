@@ -11,6 +11,8 @@ import org.icenet.client.SpawnListenerAdapter;
 import org.icescene.tools.AbstractToolArea;
 import org.icescene.tools.ToolManager;
 
+import com.jme3.math.Vector2f;
+
 import icetone.core.Element;
 import icetone.core.ElementManager;
 
@@ -68,7 +70,7 @@ public class MainToolArea extends AbstractToolArea {
 		// Coin hover
 		container.addChild(new HoverArea(screen, mainToolBarStyle.getVector2f("coinHoverAreaPosition"), mainToolBarStyle
 				.getVector2f("coinHoverAreaSize")) {
-			public Element createToolTip() {
+			public Element createToolTip(Vector2f mouseXY, Element el) {
 				return new CoinToolTip(screen, spawnData.getSpawn().getPersona().getCoin());
 			}
 		});
@@ -76,7 +78,7 @@ public class MainToolArea extends AbstractToolArea {
 		// Credits hover
 		container.addChild(new HoverArea(screen, mainToolBarStyle.getVector2f("creditsHoverAreaPosition"), mainToolBarStyle
 				.getVector2f("creditsHoverAreaSize")) {
-			public Element createToolTip() {
+			public Element createToolTip(Vector2f mouseXY, Element el) {
 				return new CreditsToolTip(screen, spawnData.getSpawn().getPersona().getCredits());
 			}
 		});
@@ -84,7 +86,7 @@ public class MainToolArea extends AbstractToolArea {
 		// Reagents hover
 		container.addChild(new HoverArea(screen, mainToolBarStyle.getVector2f("reagentsHoverAreaPosition"),
 				mainToolBarStyle.getVector2f("reagentsHoverAreaSize")) {
-			public Element createToolTip() {
+			public Element createToolTip(Vector2f mouseXY, Element el) {
 				return new ReagentsToolTip(screen, spawnData.getInventory());
 			}
 		});

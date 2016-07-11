@@ -1,9 +1,7 @@
 package org.icemoon.network;
 
-import java.net.MalformedURLException;
 import java.net.URI;
 import java.net.URISyntaxException;
-import java.nio.channels.UnresolvedAddressException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.logging.Level;
@@ -30,8 +28,6 @@ import org.icescene.configuration.TerrainTemplateConfiguration;
 import com.jme3.app.Application;
 import com.jme3.app.state.AbstractAppState;
 import com.jme3.app.state.AppStateManager;
-
-import icemoon.iceloader.locators.ServerLocator;
 
 public class NetworkAppState extends AbstractAppState {
 
@@ -66,7 +62,7 @@ public class NetworkAppState extends AbstractAppState {
 	@Override
 	public final void initialize(AppStateManager stateManager, Application app) {
 		this.app = (Iceclient) app;
-		
+
 		if (gameServer == null) {
 			gameServer = new GameServer();
 			gameServer.setAccess(Access.UNKNOWN);

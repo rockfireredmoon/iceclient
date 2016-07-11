@@ -54,6 +54,12 @@ public class LoginAppState extends AbstractIntroAppState {
 	}
 
 	@Override
+	public void cleanup() {
+		super.cleanup();
+		app.removeBackgroundPicture();
+	}
+
+	@Override
 	public void initialize(AppStateManager stateManager, final Application app) {
 		LOG.info("Preparing login screen");
 

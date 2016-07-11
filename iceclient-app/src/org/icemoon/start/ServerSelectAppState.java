@@ -2,17 +2,20 @@ package org.icemoon.start;
 
 import java.io.ByteArrayInputStream;
 import java.io.UnsupportedEncodingException;
-import java.net.MalformedURLException;
 import java.net.URL;
+import java.util.Arrays;
 import java.util.concurrent.Callable;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
 import org.apache.commons.lang3.StringUtils;
+import org.icemoon.Config;
+import org.icemoon.audio.AudioAppState;
 import org.icemoon.network.NetworkAppState;
 import org.icenet.client.GameServer;
 import org.icenet.client.ServerListManager;
 import org.icescene.HUDMessageAppState;
+import org.icescene.audio.AudioQueue;
 import org.icescene.console.ConsoleAppState;
 import org.icescene.ui.RichTextRenderer;
 import org.iceui.controls.FancyButton;
@@ -53,60 +56,34 @@ public class ServerSelectAppState extends AbstractIntroAppState {
 		loadServers();
 	}
 
-	private void loadServers() {
-		if (listManager.isLoaded()) {
-
-			reloadTable();
-			if (!serverTable.isAnythingSelected() && serverTable.getRowCount() > 0) {
-				serverTable.setSelectedRowIndex(0);
-			}
-		} else {
-			this.app.getWorldLoaderExecutorService().execute(new Runnable() {
-				@Override
-				public void run() {
-					try {
-						listManager.load();
-
-						app.enqueue(new Callable<Void>() {
-							@Override
-							public Void call() throws Exception {
-								reloadTable();
-								if (!serverTable.isAnythingSelected() && serverTable.getRowCount() > 0) {
-									serverTable.setSelectedRowIndex(0);
-								}
-								return null;
-							}
-						});
-					} catch (Exception e) {
-						HUDMessageAppState hud = app.getStateManager().getState(HUDMessageAppState.class);
-						if (hud != null)
-							hud.message(Level.SEVERE, "Failed to load server list.", e);
-					}
-				}
-			});
-		}
-	}
-
-	private void reloadTable() {
-		serverTable.removeAllRows();
-		for (GameServer gs : listManager.getServers().getServers()) {
-			LOG.info(String.format("Adding server %s", gs));
-			TableRow row = new TableRow(screen, serverTable, gs);
-			row.addCell(gs.getName(), gs);
-			serverTable.addRow(row);
-		}
+	public GameServer getSelectedGameServer() {
+		if (serverTable == null)
+			return null;
+		TableRow row = serverTable.getSelectedRow();
+		GameServer gs = row == null ? null : (GameServer) row.getValue();
+		return gs;
 	}
 
 	protected void createWindowForState() {
 		Element contentArea = contentWindow.getContentArea();
 		contentArea.removeAllChildren();
 		contentArea.setLayoutManager(
-				new MigLayout(screen, "wrap 2, gap 2, ins 0, fill", "[:300,grow][:400]", "[:300,grow][]"));
+				new MigLayout(screen, "wrap 2, gap 2, ins 0, fill", "[:300,grow][:400]", "[:300,grow][shrink 0]"));
 		serverTable = new Table(screen) {
 
 			@Override
 			public void onChange() {
+				GameServer selectedGameServer = getSelectedGameServer();
+				Config.get().put(Config.SERVER_SELECT_SERVER, selectedGameServer == null
+						? Config.SERVER_SELECT_SERVER_DEFAULT : selectedGameServer.getName());
 				showServerDetails();
+				loadBackgroundForSelection();
+				AudioAppState aas = app.getStateManager().getState(AudioAppState.class);
+				if (aas != null && Config.get().get(Config.AUDIO_START_MUSIC, Config.AUDIO_START_MUSIC_DEFAULT)
+						.equals(Config.AUDIO_START_MUSIC_SERVER_DEFAULT)) {
+					aas.clearQueuesAndStopAudio(true, AudioQueue.MUSIC);
+					aas.playStartMusic();
+				}
 			}
 		};
 		serverTable.setColumnResizeMode(ColumnResizeMode.AUTO_FIRST);
@@ -156,6 +133,65 @@ public class ServerSelectAppState extends AbstractIntroAppState {
 		contentArea.addChild(actions, "growx, span 2");
 
 		setAvailable();
+	}
+
+	@Override
+	protected String getTitle() {
+		return "Select Server";
+	}
+
+	private void loadBackgroundForSelection() {
+		final GameServer srv = getSelectedGameServer();
+		loadServerBackground(srv);
+	}
+
+	private void loadServers() {
+		if (listManager.isLoaded()) {
+
+			reloadTable();
+			if (!serverTable.isAnythingSelected() && serverTable.getRowCount() > 0) {
+				serverTable.setSelectedRowIndex(0);
+			}
+		} else {
+			this.app.getWorldLoaderExecutorService().execute(new Runnable() {
+				@Override
+				public void run() {
+					try {
+						listManager.load();
+
+						app.enqueue(new Callable<Void>() {
+							@Override
+							public Void call() throws Exception {
+								reloadTable();
+								if (!serverTable.isAnythingSelected() && serverTable.getRowCount() > 0) {
+									serverTable.setSelectedRowIndex(0);
+								}
+								loadBackgroundForSelection();
+								return null;
+							}
+						});
+					} catch (Exception e) {
+						HUDMessageAppState hud = app.getStateManager().getState(HUDMessageAppState.class);
+						if (hud != null)
+							hud.message(Level.SEVERE, "Failed to load server list.", e);
+					}
+				}
+			});
+		}
+	}
+
+	private void reloadTable() {
+		serverTable.removeAllRows();
+		for (GameServer gs : listManager.getServers().getServers()) {
+			LOG.info(String.format("Adding server %s", gs));
+			TableRow row = new TableRow(screen, serverTable, gs);
+			row.addCell(gs.getName(), gs);
+			serverTable.addRow(row);
+			if (gs.equals(gameServer) || gs.getName()
+					.equals(Config.get().get(Config.SERVER_SELECT_SERVER, Config.SERVER_SELECT_SERVER_DEFAULT))) {
+				serverTable.setSelectedRows(Arrays.asList(row));
+			}
+		}
 	}
 
 	private void showServerDetails() {
@@ -239,12 +275,6 @@ public class ServerSelectAppState extends AbstractIntroAppState {
 		app.getStateManager().attach(new ConsoleAppState(app.getPreferences()));
 	}
 
-	private GameServer getSelectedGameServer() {
-		TableRow row = serverTable.getSelectedRow();
-		GameServer gs = row == null ? null : (GameServer) row.getValue();
-		return gs;
-	}
-
 	private void setAvailable() {
 		GameServer gs = getSelectedGameServer();
 		removeServer.setIsEnabled(gs != null && gs.isUserDefined());
@@ -252,10 +282,5 @@ public class ServerSelectAppState extends AbstractIntroAppState {
 
 		// TODO
 		addServer.setIsEnabled(false);
-	}
-
-	@Override
-	protected String getTitle() {
-		return "Select Server";
 	}
 }

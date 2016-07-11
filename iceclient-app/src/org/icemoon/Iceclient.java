@@ -37,6 +37,7 @@ import org.icemoon.tools.impl.SocialTool;
 import org.icemoon.tools.impl.TerrainEditTool;
 import org.icemoon.tools.impl.ToolBoxTool;
 import org.icemoon.tools.impl.TrashTool;
+import org.icenet.client.GameServer;
 import org.icescene.HUDMessageAppState;
 import org.icescene.IcesceneApp;
 import org.icescene.assets.Assets;
@@ -49,6 +50,7 @@ import org.icescene.tools.ToolCategory;
 import org.icescene.tools.ToolManager;
 import org.icescene.ui.WindowManagerAppState;
 
+import com.jme3.app.Application;
 import com.jme3.font.BitmapFont;
 import com.jme3.input.controls.ActionListener;
 import com.jme3.renderer.queue.RenderQueue;
@@ -167,6 +169,21 @@ public class Iceclient extends IcesceneApp implements ActionListener {
 
 	public ToolManager getToolManager() {
 		return toolManager;
+	}
+
+	public GameServer getCurrentGameServer() {
+		NetworkAppState nas = getStateManager().getState(NetworkAppState.class);
+		GameServer srv = null;
+		if (nas != null) {
+			srv = nas.getGameServer();
+		}
+		if(srv == null) {
+			ServerSelectAppState sas = getStateManager().getState(ServerSelectAppState.class);
+			if(sas != null) {
+				srv = sas.getSelectedGameServer();
+			}
+		}
+		return srv;
 	}
 
 	@Override

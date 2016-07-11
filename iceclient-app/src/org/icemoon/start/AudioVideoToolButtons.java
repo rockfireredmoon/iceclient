@@ -1,15 +1,16 @@
 package org.icemoon.start;
 
-
+import org.apache.commons.lang3.StringUtils;
 import org.icelib.Icelib;
 import org.icemoon.Config;
+import org.icemoon.Iceclient;
 import org.icemoon.audio.AudioAppState;
+import org.icenet.client.GameServer;
 import org.icescene.DisplaySettingsWindow;
 import org.icescene.IcesceneApp;
 import org.icescene.SceneConfig;
 import org.icescene.audio.AudioQueue;
 import org.icescene.audio.Music;
-import org.icescene.audio.QueuedAudio;
 import org.iceui.UIConstants;
 import org.iceui.controls.FancyButton;
 import org.iceui.controls.FancyPositionableWindow;
@@ -90,7 +91,8 @@ public class AudioVideoToolButtons extends Element {
 						screen.getApplication().getStateManager().getState(AudioAppState.class));
 				audioPopup.setY(LUtil.getAbsoluteY(audio) + audio.getHeight());
 				audioPopup.setX(audio.getAbsoluteX() - audioPopup.getWidth() + audio.getWidth());
-				audioPopup.setSelectedMusic(Config.get().get(Config.AUDIO_START_MUSIC, Config.AUDIO_START_MUSIC_DEFAULT));
+				audioPopup
+						.setSelectedMusic(Config.get().get(Config.AUDIO_START_MUSIC, Config.AUDIO_START_MUSIC_DEFAULT));
 				audioPopup.showWithEffect();
 			}
 		};
@@ -129,14 +131,24 @@ public class AudioVideoToolButtons extends Element {
 				public void onChange(int selectedIndex, String value) {
 					if (!adjusting) {
 						audio.clearQueuesAndStopAudio(true, AudioQueue.MUSIC);
-						if (!value.equals("")) {
-							audio.queue(AudioQueue.MUSIC, AudioVideoToolButtons.this, value, 0, 1f);
-						}
 						onChangeMusic(value);
+						if (!value.equals("")) {
+							if (value.equals(Config.AUDIO_START_MUSIC_SERVER_DEFAULT)) {
+								GameServer srv = ((Iceclient) app).getCurrentGameServer();
+								if (srv != null && StringUtils.isNotBlank(srv.getStartMusic()))
+									value = srv.getStartMusic();
+								else
+									value = "";
+							}
+							if (!value.equals("")) {
+								audio.queue(AudioQueue.MUSIC, AudioVideoToolButtons.this, value, 0, 1f);
+							}
+						}
 					}
 				}
 			};
 			music.addListItem("No start screen music", "");
+			music.addListItem("Server default music", Config.AUDIO_START_MUSIC_SERVER_DEFAULT);
 			for (String r : Music.get(app.getAssetManager()).getMusicResources()) {
 				String basename = Icelib.getBasename(Icelib.getFilename(r));
 				if (basename.toLowerCase().startsWith("music-")) {
@@ -157,7 +169,8 @@ public class AudioVideoToolButtons extends Element {
 				}
 			};
 			masterVolume.setSliderModel(new FloatRangeSliderModel(0, 1,
-					Config.get().getFloat(SceneConfig.AUDIO_MASTER_VOLUME, SceneConfig.AUDIO_MASTER_VOLUME_DEFAULT), 0.05f));
+					Config.get().getFloat(SceneConfig.AUDIO_MASTER_VOLUME, SceneConfig.AUDIO_MASTER_VOLUME_DEFAULT),
+					0.05f));
 			masterVolume.setLockToStep(true);
 			content.addChild(masterVolume);
 
@@ -170,7 +183,8 @@ public class AudioVideoToolButtons extends Element {
 				}
 			};
 			musicVolume.setSliderModel(new FloatRangeSliderModel(0, 1,
-					Config.get().getFloat(SceneConfig.AUDIO_MUSIC_VOLUME, SceneConfig.AUDIO_MUSIC_VOLUME_DEFAULT), 0.05f));
+					Config.get().getFloat(SceneConfig.AUDIO_MUSIC_VOLUME, SceneConfig.AUDIO_MUSIC_VOLUME_DEFAULT),
+					0.05f));
 			musicVolume.setLockToStep(true);
 			content.addChild(musicVolume);
 
@@ -194,7 +208,8 @@ public class AudioVideoToolButtons extends Element {
 					Config.get().putBoolean(SceneConfig.AUDIO_MUTE, toggled);
 				}
 			};
-			mute.setIsCheckedNoCallback(Config.get().getBoolean(SceneConfig.AUDIO_MUTE, SceneConfig.AUDIO_MUTE_DEFAULT));
+			mute.setIsCheckedNoCallback(
+					Config.get().getBoolean(SceneConfig.AUDIO_MUTE, SceneConfig.AUDIO_MUTE_DEFAULT));
 			mute.setLabelText("Mute");
 			content.addChild(mute, "span 2, growx");
 
@@ -204,7 +219,8 @@ public class AudioVideoToolButtons extends Element {
 			addEffect(Effect.EffectEvent.Show, slideIn);
 
 			// Hide effect
-			Effect slideOut = new Effect(Effect.EffectType.SlideOut, Effect.EffectEvent.Hide, UIConstants.UI_EFFECT_TIME);
+			Effect slideOut = new Effect(Effect.EffectType.SlideOut, Effect.EffectEvent.Hide,
+					UIConstants.UI_EFFECT_TIME);
 			slideOut.setEffectDirection(Effect.EffectDirection.Top);
 			addEffect(Effect.EffectEvent.Hide, slideOut);
 

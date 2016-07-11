@@ -9,6 +9,7 @@ import java.util.concurrent.Callable;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
+import org.apache.commons.lang3.StringUtils;
 import org.icelib.AttachmentItem;
 import org.icelib.Color;
 import org.icelib.EntityKey;
@@ -21,6 +22,7 @@ import org.icelib.Profession;
 import org.icelib.RGB;
 import org.icelib.Slot;
 import org.icemoon.Config;
+import org.icemoon.Iceclient;
 import org.icemoon.domain.Account;
 import org.icemoon.game.controls.MoveableCharacterControl;
 import org.icemoon.game.controls.PlayerAnimControl;
@@ -28,6 +30,7 @@ import org.icemoon.game.controls.PlayerRotatingControl;
 import org.icemoon.network.NetworkAppState;
 import org.icemoon.network.NetworkListenerAdapter;
 import org.icenet.NetworkException;
+import org.icenet.client.GameServer;
 import org.icescene.IcemoonAppState;
 import org.icescene.IcesceneApp;
 import org.icescene.SceneConstants;
@@ -252,7 +255,13 @@ public class StartAppState extends IcemoonAppState<IcemoonAppState<?>> {
 			es.setFollowCamera(true);
 			es.setAudioEnabled(false);
 			stateManager.attach(es);
-			es.setEnvironment(EnvPriority.USER, "Default");
+			
+			String env = "Default";
+			GameServer srv = ((Iceclient)app).getCurrentGameServer();
+			if(srv != null && StringUtils.isNotBlank(srv.getLobbyEnvironment())) 
+				env = srv.getLobbyEnvironment();
+			
+			es.setEnvironment(EnvPriority.USER, env);
 			es.setPhase(EnvironmentPhase.DAY);
 			StartAppState sas = stateManager.getState(StartAppState.class);
 			backgroundProp = sas.getPropFactory().getProp("Prop-CharSelect_BG#Prop-CharSelect_BG").getSpatial();
