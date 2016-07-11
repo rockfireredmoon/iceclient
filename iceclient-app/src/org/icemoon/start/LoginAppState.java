@@ -1,14 +1,21 @@
 package org.icemoon.start;
 
+import java.io.File;
+import java.io.IOException;
 import java.net.URI;
 import java.util.concurrent.Callable;
 import java.util.logging.Level;
 import java.util.logging.Logger;
+import java.util.prefs.Preferences;
 
+import org.apache.commons.lang3.StringUtils;
+import org.icelib.AppInfo;
 import org.icelib.XDesktop;
 import org.icemoon.Config;
 import org.icemoon.network.NetworkAppState;
 import org.icemoon.network.NetworkListenerAdapter;
+import org.icenet.client.GameServer;
+import org.icescene.HUDMessageAppState;
 import org.icescene.console.ConsoleAppState;
 import org.iceui.UIConstants;
 import org.iceui.controls.BusySpinner;
@@ -33,6 +40,8 @@ import icetone.controls.text.TextField;
 import icetone.core.Element;
 import icetone.core.Element.Orientation;
 import icetone.core.layout.mig.MigLayout;
+import net.east301.keyring.BackendNotSupportedException;
+import net.east301.keyring.Keyring;
 
 public class LoginAppState extends AbstractIntroAppState {
 
@@ -44,6 +53,7 @@ public class LoginAppState extends AbstractIntroAppState {
 	private ButtonAdapter requestButton;
 	protected NetworkAppState network;
 	private String authToken;
+	private static Keyring keyring;
 
 	public LoginAppState() {
 		this(null);
@@ -64,6 +74,26 @@ public class LoginAppState extends AbstractIntroAppState {
 		LOG.info("Preparing login screen");
 
 		this.network = stateManager.getState(NetworkAppState.class);
+
+		if (keyring == null) {
+			try {
+				keyring = Keyring.create();
+			} catch (BackendNotSupportedException ex) {
+				throw new RuntimeException(ex);
+			}
+
+			if (keyring.isKeyStorePathRequired()) {
+				try {
+					File dir = new File(new File(new File(System.getProperty("user.home")), ".config"),
+							AppInfo.getName());
+					if (!dir.exists() && !dir.mkdirs())
+						throw new IOException(String.format("Could not create keystore directory %s.", dir));
+					keyring.setKeyStorePath(new File(dir, "keystore").getAbsolutePath());
+				} catch (Exception ex) {
+					throw new RuntimeException(ex);
+				}
+			}
+		}
 
 		super.initialize(stateManager, app);
 
@@ -86,11 +116,19 @@ public class LoginAppState extends AbstractIntroAppState {
 		if (usernameField != null) {
 			boolean remember = rememberMeField.getIsChecked();
 			if (remember) {
-				Config.get().put(Config.LOGIN_USERNAME, username);
-				// TODO obfuscate
-				Config.get().put(Config.LOGIN_PASSWORD, new String(password));
+				try {
+					String serviceName = getServiceName();
+					LOG.info(String.format("Storing password under %s", serviceName));
+					keyring.setPassword(serviceName, username, new String(password));
+				} catch (Exception e) {
+					HUDMessageAppState hud = app.getStateManager().getState(HUDMessageAppState.class);
+					if (hud != null)
+						hud.message(Level.WARNING, e.getMessage());
+					LOG.log(Level.WARNING, "Failed to store password.", e);
+				}
 			}
-			Config.get().putBoolean(Config.LOGIN_REMEMBER, remember);
+			Config.get().node(getServerName()).put(Config.LOGIN_USERNAME, username);
+			Config.get().node(getServerName()).putBoolean(Config.LOGIN_REMEMBER, remember);
 		}
 		final NetworkListenerAdapter listener = new NetworkListenerAdapter() {
 			@Override
@@ -242,16 +280,37 @@ public class LoginAppState extends AbstractIntroAppState {
 		loginForm.addFormElement(loginButton);
 
 		// Set the login details
-		boolean remember = Config.get().getBoolean(Config.LOGIN_REMEMBER, Config.LOGIN_REMEMBER_DEFAULT);
+		Preferences node = Config.get().node(getServerName());
+		boolean remember = node.getBoolean(Config.LOGIN_REMEMBER, Config.LOGIN_REMEMBER_DEFAULT);
 		if (remember) {
-			usernameField.setText(Config.get().get(Config.LOGIN_USERNAME, ""));
-			passwordField.setText(Config.get().get(Config.LOGIN_PASSWORD, ""));
+			String username = node.get(Config.LOGIN_USERNAME, "");
+			usernameField.setText(username);
+			String password = "";
+			if (StringUtils.isNotBlank(username)) {
+				try {
+					String serviceName = getServiceName();
+					LOG.info(String.format("Retrieving password from %s", serviceName));
+					password = keyring.getPassword(serviceName, username);
+				} catch (Exception e) {
+					LOG.log(Level.WARNING, "Could not retrieve password.", e);
+				}
+				passwordField.setText(password);
+			}
 			rememberMeField.setIsChecked(true);
 		}
+	}
+
+	private String getServiceName() {
+		return AppInfo.getName() + " (" + getServerName() + ")";
 	}
 
 	@Override
 	protected String getTitle() {
 		return "Login";
+	}
+
+	private String getServerName() {
+		GameServer gs = app.getCurrentGameServer();
+		return gs == null ? "default" : gs.getName();
 	}
 }

@@ -102,8 +102,6 @@ public class Config extends SceneConfig {
     public final static String LOGIN = "login";
     // Username
     public final static String LOGIN_USERNAME = LOGIN + "Username";
-    // Password
-    public final static String LOGIN_PASSWORD = LOGIN + "Password";
     // Remember username / password
     public final static String LOGIN_REMEMBER = LOGIN + "Remember";
     public final static boolean LOGIN_REMEMBER_DEFAULT = false;
