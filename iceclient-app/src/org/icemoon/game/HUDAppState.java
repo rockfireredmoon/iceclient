@@ -7,12 +7,14 @@ import static org.icemoon.Config.UI;
 import static org.icemoon.Config.get;
 import static org.icescene.SceneConfig.DEBUG;
 
+import java.lang.reflect.Constructor;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import java.util.prefs.PreferenceChangeEvent;
+import java.util.prefs.Preferences;
 
 import org.icelib.Zone;
 import org.icemoon.Config;
@@ -27,19 +29,14 @@ import org.icescene.IcemoonAppState;
 import org.icescene.IcesceneApp;
 import org.icescene.entities.AbstractCreatureEntity;
 import org.icescene.entities.AbstractSpawnEntity;
-import org.iceui.HPosition;
-import org.iceui.VPosition;
-import org.iceui.controls.FancyButton;
-import org.iceui.controls.FancyPositionableWindow;
-import org.iceui.controls.FancyWindow;
-import org.iceui.controls.UIUtil;
 
 import com.jme3.app.state.AppState;
 import com.jme3.app.state.AppStateManager;
 import com.jme3.input.controls.ActionListener;
-import com.jme3.input.event.MouseButtonEvent;
-import com.jme3.math.Vector2f;
 
+import icetone.controls.buttons.PushButton;
+import icetone.controls.containers.Frame;
+import icetone.core.layout.ScreenLayoutConstraints;
 import icetone.core.layout.mig.MigLayout;
 
 /**
@@ -62,11 +59,12 @@ public class HUDAppState extends IcemoonAppState<GameAppState> implements Action
 	private final static String MAPPING_MAP = "Map";
 	private final static String MAPPING_EXIT = "Exit";
 	private final static String MAPPING_TOGGLE_MINIMAP = "Minimap";
+	private final static String MAPPING_TOGGLE_TARGETS = "Targets";
 	private final static String MAPPING_TOGGLE_HUD = "HUD";
 	private final static Logger LOG = Logger.getLogger(HUDAppState.class.getName());
 	private float targetUIOpacity;
 	private float currentUIOpacity;
-	private FancyPositionableWindow exitOptionsWindow;
+	private Frame exitOptionsWindow;
 	private List<Class<? extends AppState>> hudStates = new ArrayList<Class<? extends AppState>>();
 	private ClientListenerAdapter listener;
 	private boolean showingHud = true;
@@ -103,6 +101,7 @@ public class HUDAppState extends IcemoonAppState<GameAppState> implements Action
 		showingHud = true;
 		toggle(GameConsoleAppState.class);
 		toggle(ChatAppState.class);
+		toggle(CharacterBarsAppState.class);
 	}
 
 	private void checkMiniMapState() {
@@ -121,11 +120,18 @@ public class HUDAppState extends IcemoonAppState<GameAppState> implements Action
 		AppState currentState = stateManager.getState(appState);
 		if (currentState == null) {
 			try {
-				final AppState state = appState.newInstance();
+				Constructor<? extends AppState> cons = appState.getConstructor(Preferences.class);
+				final AppState state = cons.newInstance(prefs);
 				stateManager.attach(state);
 				hudStates.add(appState);
 			} catch (Exception ex) {
-				throw new RuntimeException(ex);
+				try {
+					final AppState state = appState.newInstance();
+					stateManager.attach(state);
+					hudStates.add(appState);
+				} catch (Exception ex2) {
+					throw new RuntimeException(ex2);
+				}
 			}
 		} else {
 			hudStates.remove(appState);
@@ -135,6 +141,7 @@ public class HUDAppState extends IcemoonAppState<GameAppState> implements Action
 
 	@Override
 	protected void doRegisterAllInput() {
+		app.getKeyMapManager().addMapping(MAPPING_TOGGLE_TARGETS);
 		app.getKeyMapManager().addMapping(MAPPING_TOGGLE_MINIMAP);
 		app.getKeyMapManager().addMapping(MAPPING_MAP);
 		app.getKeyMapManager().addMapping(MAPPING_TOGGLE_HUD);
@@ -142,9 +149,10 @@ public class HUDAppState extends IcemoonAppState<GameAppState> implements Action
 		app.getKeyMapManager().addMapping(MAPPING_EXIT);
 		// app.getKeyMapManager().addMapping(MAPPING_CONSOLE);
 		// app.getKeyMapManager().addMapping(MAPPING_CONSOLE_ONCE);
-		app.getKeyMapManager().addListener(this, MAPPING_MAP, MAPPING_INVENTORY, MAPPING_TOGGLE_MINIMAP, MAPPING_TOGGLE_HUD,
-		// MAPPING_CONSOLE,
-		// MAPPING_CONSOLE_ONCE,
+		app.getKeyMapManager().addListener(this, MAPPING_MAP, MAPPING_INVENTORY, MAPPING_TOGGLE_MINIMAP,
+				MAPPING_TOGGLE_TARGETS, MAPPING_TOGGLE_HUD,
+				// MAPPING_CONSOLE,
+				// MAPPING_CONSOLE_ONCE,
 				MAPPING_EXIT);
 
 		// if (gameKeysUnregistered) {
@@ -175,6 +183,7 @@ public class HUDAppState extends IcemoonAppState<GameAppState> implements Action
 	protected void doUnregisterAllInput() {
 		app.getKeyMapManager().deleteMapping(MAPPING_MAP);
 		app.getKeyMapManager().deleteMapping(MAPPING_TOGGLE_MINIMAP);
+		app.getKeyMapManager().deleteMapping(MAPPING_TOGGLE_TARGETS);
 		app.getKeyMapManager().deleteMapping(MAPPING_TOGGLE_HUD);
 		app.getKeyMapManager().deleteMapping(MAPPING_EXIT);
 		app.getKeyMapManager().deleteMapping(MAPPING_INVENTORY);
@@ -222,7 +231,7 @@ public class HUDAppState extends IcemoonAppState<GameAppState> implements Action
 	}
 
 	public void onAction(String name, boolean isPressed, float tpf) {
-		if (exitOptionsWindow != null && exitOptionsWindow.getIsVisible()) {
+		if (exitOptionsWindow != null && exitOptionsWindow.isVisible()) {
 			// When in exit screen. We use pressed here so it doesn't interfere
 			// with
 			// escaping from chat
@@ -238,19 +247,20 @@ public class HUDAppState extends IcemoonAppState<GameAppState> implements Action
 					}
 
 					// Hide other stuff
+					detachIfAttached(CharacterBarsAppState.class);
 					detachIfAttached(ActionBarsAppState.class);
 					setNameplatesVisible(false);
 				} else {
 					for (Class<? extends AppState> as : Arrays.asList(RealtimeMiniMapAppState.class, ChatAppState.class,
-							GameConsoleAppState.class)) {
+							GameConsoleAppState.class, CharacterBarsAppState.class)) {
 						if (stateManager.getState(as) == null) {
 							toggle(as);
 						}
 					}
 
 					// Show the actions bars too
-					stateManager.attach(new ActionBarsAppState(prefs, BuildAppState.buildMode ? GameHudType.BUILD
-							: GameHudType.GAME));
+					stateManager.attach(new ActionBarsAppState(prefs,
+							BuildAppState.buildMode ? GameHudType.BUILD : GameHudType.GAME));
 					setNameplatesVisible(true);
 
 					// Show debug if it is enabled
@@ -260,6 +270,8 @@ public class HUDAppState extends IcemoonAppState<GameAppState> implements Action
 
 			} else if (app.getKeyMapManager().isMapped(name, MAPPING_TOGGLE_MINIMAP) && !isPressed) {
 				toggle(RealtimeMiniMapAppState.class);
+			} else if (app.getKeyMapManager().isMapped(name, MAPPING_TOGGLE_TARGETS) && !isPressed) {
+				toggle(CharacterBarsAppState.class);
 			} else if (app.getKeyMapManager().isMapped(name, MAPPING_MAP) && !isPressed) {
 				toggle(WorldMapAppState.class);
 				// } else if (name.equals(MAPPING_CONSOLE_ONCE) && isPressed) {
@@ -326,57 +338,60 @@ public class HUDAppState extends IcemoonAppState<GameAppState> implements Action
 	}
 
 	private void closeExitPopup() {
-		exitOptionsWindow.hideWithEffect();
+		exitOptionsWindow.hide();
 	}
 
 	private void showExitPopup() {
 		if (exitOptionsWindow == null) {
-			exitOptionsWindow = new FancyPositionableWindow(screen, "ExitPopup", 0, VPosition.MIDDLE, HPosition.CENTER,
-					new Vector2f(200, 150), FancyWindow.Size.SMALL, true) {
+			exitOptionsWindow = new Frame(screen, true) {
+				{
+					setStyleClass("large fancy");
+				}
 			};
 			exitOptionsWindow.setWindowTitle("Menu");
-			exitOptionsWindow.setIsMovable(false);
-			exitOptionsWindow.setIsResizable(false);
-			exitOptionsWindow.setIsModal(true);
-			UIUtil.center(screen, exitOptionsWindow);
-			exitOptionsWindow.getContentArea().setLayoutManager(
-					new MigLayout(screen, "wrap 1, fill", "20[fill, grow]20", "10[][][]10"));
-			FancyButton disconnect = new FancyButton(screen) {
-				@Override
-				public void onButtonMouseLeftUp(MouseButtonEvent evt, boolean toggled) {
-					GameAppState st = stateManager.getState(GameAppState.class);
-					st.setReconnect();
-					network.closeClientConnection();
-					closeExitPopup();
-
+			exitOptionsWindow.setMovable(false);
+			exitOptionsWindow.setResizable(false);
+			exitOptionsWindow.setModal(true);
+			exitOptionsWindow.getContentArea()
+					.setLayoutManager(new MigLayout(screen, "wrap 1, fill", "20[fill, grow]20", "10[][][]10"));
+			PushButton disconnect = new PushButton(screen) {
+				{
+					setStyleClass("fancy");
 				}
 			};
+			disconnect.onMouseReleased(evt -> {
+				GameAppState st = stateManager.getState(GameAppState.class);
+				st.setReconnect();
+				network.closeClientConnection();
+				closeExitPopup();
+			});
 			disconnect.setText("Disconnect");
-			exitOptionsWindow.getContentArea().addChild(disconnect);
-			FancyButton options = new FancyButton(screen) {
-				@Override
-				public void onButtonMouseLeftUp(MouseButtonEvent evt, boolean toggled) {
-					OptionsAppState st = stateManager.getState(OptionsAppState.class);
-					if (st == null) {
-						stateManager.attach(new OptionsAppState());
-						closeExitPopup();
-					}
+			exitOptionsWindow.getContentArea().addElement(disconnect);
+			PushButton options = new PushButton(screen) {
+				{
+					setStyleClass("fancy");
 				}
 			};
+			options.onMouseReleased(evt -> {
+				OptionsAppState st = stateManager.getState(OptionsAppState.class);
+				if (st == null) {
+					stateManager.attach(new OptionsAppState());
+					closeExitPopup();
+				}
+			});
 			options.setText("Options");
-			exitOptionsWindow.getContentArea().addChild(options);
-			FancyButton exit = new FancyButton(screen) {
-				@Override
-				public void onButtonMouseLeftUp(MouseButtonEvent evt, boolean toggled) {
-					app.stop();
+			exitOptionsWindow.getContentArea().addElement(options);
+			PushButton exit = new PushButton(screen) {
+				{
+					setStyleClass("fancy");
 				}
 			};
+			exit.onMouseReleased(evt -> app.stop());
 			exit.setText("Exit");
-			exitOptionsWindow.getContentArea().addChild(exit);
-			exitOptionsWindow.pack(false);
-			screen.addElement(exitOptionsWindow);
+			exitOptionsWindow.getContentArea().addElement(exit);
+			screen.showElement(exitOptionsWindow, ScreenLayoutConstraints.center);
 		}
-		exitOptionsWindow.showWithEffect();
+		exitOptionsWindow.show();
 	}
 
 	private void setNameplatesVisible(boolean nameplatesVisible) {

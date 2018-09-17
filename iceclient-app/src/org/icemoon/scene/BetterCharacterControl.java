@@ -670,6 +670,14 @@ public class BetterCharacterControl extends AbstractPhysicsControl implements Ph
     }
 
     @Override
+    public Object jmeClone() {
+        BetterCharacterControl control = new BetterCharacterControl(radius, height, mass);
+        control.setJumpForce(jumpForce);
+        control.spatial = this.spatial;
+        return control;
+    }     
+
+    @Override
     public void write(JmeExporter ex) throws IOException {
         super.write(ex);
         OutputCapsule oc = ex.getCapsule(this);

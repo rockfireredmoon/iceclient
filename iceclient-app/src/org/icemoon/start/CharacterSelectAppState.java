@@ -10,30 +10,25 @@ import java.util.logging.Logger;
 import org.icelib.Appearance;
 import org.icelib.Icelib;
 import org.icelib.Persona;
-import org.icemoon.Constants;
 import org.icemoon.game.GameAppState;
 import org.icemoon.network.NetworkAppState;
 import org.icenet.NetworkException;
 import org.icescene.HUDMessageAppState;
-import org.iceui.controls.BigButton;
-import org.iceui.controls.FancyButton;
-import org.iceui.controls.FancyDialogBox;
-import org.iceui.controls.FancyWindow;
+import org.icescene.HUDMessageAppState.Channel;
+import org.iceui.controls.ElementStyle;
 import org.iceui.controls.SelectArea;
-import org.iceui.controls.SelectableItem;
-import org.iceui.controls.UIUtil;
 
 import com.jme3.input.event.MouseButtonEvent;
 import com.jme3.math.Vector2f;
 
-import icetone.controls.buttons.ButtonAdapter;
+import icetone.controls.buttons.PushButton;
+import icetone.controls.buttons.SelectableItem;
+import icetone.controls.containers.Frame;
 import icetone.core.Container;
-import icetone.core.Element;
-import icetone.core.Screen;
-import icetone.core.layout.LUtil;
-import icetone.core.layout.LayoutManager;
+import icetone.core.BaseElement;
+import icetone.core.layout.ScreenLayoutConstraints;
 import icetone.core.layout.mig.MigLayout;
-import icetone.effects.Effect;
+import icetone.extras.windows.DialogBox;
 
 /**
  * Start screen that allows play, logout, character selection, creation,
@@ -42,21 +37,14 @@ import icetone.effects.Effect;
 public class CharacterSelectAppState extends AbstractLobbyAppState {
 
 	private final static Logger LOG = Logger.getLogger(CharacterSelectAppState.class.getName());
-	private FancyWindow panel;
-	private ButtonAdapter play;
+	private Frame panel;
+	private PushButton play;
 	private NetworkAppState network;
 	private SelectArea list;
-	private BigButton logout;
-	private boolean adjusting;
+	private PushButton logout;
 
 	@Override
 	public void onCleanup() {
-
-		// This are all contained in layer
-		effectHelper.destroy(panel, Effect.EffectType.SlideOut, Effect.EffectDirection.Top);
-		effectHelper.destroy(play, Effect.EffectType.SlideOut, Effect.EffectDirection.Right);
-		effectHelper.destroy(logout, Effect.EffectType.SlideOut, Effect.EffectDirection.Bottom);
-
 	}
 
 	@Override
@@ -65,103 +53,100 @@ public class CharacterSelectAppState extends AbstractLobbyAppState {
 		this.network = stateManager.getState(NetworkAppState.class);
 
 		// Panel for actions and character selection/
-		panel = new FancyWindow(screen, Vector2f.ZERO, LUtil.LAYOUT_SIZE, FancyWindow.Size.LARGE, false);
+		panel = new Frame(screen, false) {
+			{
+				setStyleClass("large lobby-frame");
+			}
+		};
 		panel.setWindowTitle("Select Character");
-		panel.setIsMovable(false);
-		panel.setIsResizable(false);
-		final Element contentArea = panel.getContentArea();
-		contentArea.setLayoutManager(new MigLayout(screen, "wrap 1, gap 0, ins 0", "[grow, fill]push", "[fill, grow][]"));
+		panel.setMovable(false);
+		panel.setResizable(false);
+		panel.setDestroyOnHide(true);
+		final BaseElement contentArea = panel.getContentArea();
+		contentArea
+				.setLayoutManager(new MigLayout(screen, "wrap 1, gap 0, ins 0, fill", "[fill]", "[fill,grow][]"));
 
 		// Build list
 		list = new SelectArea(screen) {
 			@Override
 			public void onChange() {
-				if (!adjusting) {
+				if (!isAdjusting()) {
 					final List<SelectableItem> selectedListItems = getSelectedListItems();
 					if (!selectedListItems.isEmpty()) {
-						((Screen) screen).playAudioNode(Constants.SOUND_TAB_TARGET, 1);
 						CharacterPanel p = (CharacterPanel) selectedListItems.get(0);
 						start.setCharacter(p.getCharacter());
 					}
 				}
 			}
 		};
+		list.addStyleClass("character-select-area");
+
 		// list.setScrollAreaLayout(new MigLayout(screen,
 		// "wrap 1, ins 0, gap 0", "[grow, fill]", "[]"));
-//		list.setIsMovable(false);
-//		list.setIsResizable(false);
-		contentArea.addChild(list);
+		// list.setIsMovable(false);
+		// list.setIsResizable(false);
+		contentArea.addElement(list);
 
 		// Buttons
 		Container buttons = new Container(screen);
-		buttons.setLayoutManager(new MigLayout(screen, "", "[45%!,grow, fill]push[45%!,grow, fill]"));
-		FancyButton create = new FancyButton(screen) {
-			@Override
-			public void onButtonMouseLeftUp(MouseButtonEvent evt, boolean toggled) {
-				try {
-					createCharacter();
-				} catch (NetworkException ex) {
-					LOG.log(Level.SEVERE, "Failed to create default character for editing.", ex);
-				}
+		buttons.setLayoutManager(new MigLayout(screen, "fill", "[al 50%][al 50%]"));
+		PushButton create = new PushButton(screen) {
+			{
+				setStyleClass("fancy");
 			}
 		};
+		create.onMouseReleased(evt -> {
+			try {
+				createCharacter();
+			} catch (NetworkException ex) {
+				LOG.log(Level.SEVERE, "Failed to create default character for editing.", ex);
+			}
+		});
 		create.setText("Create");
-		buttons.addChild(create, "");
-		FancyButton delete = new FancyButton(screen) {
-			@Override
-			public void onMouseLeftReleased(MouseButtonEvent evt) {
-				deleteCharacter();
+		buttons.addElement(create, "");
+		PushButton delete = new PushButton(screen) {
+			{
+				setStyleClass("fancy");
 			}
 		};
+		delete.onMouseReleased(evt -> deleteCharacter());
 		delete.setText("Delete");
-		buttons.addChild(delete, "");
-		contentArea.addChild(buttons);
+		buttons.addElement(delete, "");
+		contentArea.addElement(buttons);
 
 		// Buttons
 
-		logout = new BigButton(this.app.getScreen()) {
-			@Override
-			public void onButtonMouseLeftUp(MouseButtonEvent evt, boolean toggled) {
-				logout();
+		logout = new PushButton(this.app.getScreen()) {
+			{
+				setStyleId("logout");
+				setStyleClass("big cancel");
 			}
 		};
+		logout.onMouseReleased(evt -> logout());
 		logout.setText("Logout");
-		play = new BigButton(this.app.getScreen()) {
-			@Override
-			public void onButtonMouseLeftUp(MouseButtonEvent evt, boolean toggled) {
-				play();
+
+		play = new PushButton(this.app.getScreen()) {
+			{
+				setStyleId("play");
+				setStyleClass("fancy big");
 			}
 		};
+		play.onMouseReleased(evt -> play());
 		play.setText("Play!");
 
-		//
-
-		// Iceclient
-		Container main = new Container(screen);
-		main.setLayoutManager(new MigLayout(screen, "fill, wrap 2", "[][]", "push[]"));
-		main.addChild(logout, "ax left, ay bottom");
-		main.addChild(play, "ax right, ay bottom");
-
 		// Layer
-		layer.addChild(panel, "growy, growx");
-		layer.addChild(main, "growy, growx");
-
-
-		// Show effect
-		effectHelper.reveal(play, Effect.EffectType.SlideIn, Effect.EffectDirection.Right);
-		effectHelper.reveal(logout, Effect.EffectType.SlideIn, Effect.EffectDirection.Bottom);
-		effectHelper.reveal(panel, Effect.EffectType.SlideIn, Effect.EffectDirection.Top);
-		effectHelper.reveal(layer, Effect.EffectType.FadeIn, null);
+		layer.addElement(logout);
+		layer.addElement(play);
+		layer.addElement(panel);
 
 		loadInThread();
 	}
 
 	public void play() {
-		((Screen) screen).playAudioNode(Constants.SOUND_ENTER_GAME, 1);
 		final Persona playCharacter = start.getCharacter();
 		LoadScreenAppState.show(app, false);
-		LOG.info(String.format("Playing %s, a level %d %s (%d)", playCharacter.getDisplayName(), playCharacter.getLevel(),
-				playCharacter.getProfession(), playCharacter.getEntityId()));
+		LOG.info(String.format("Playing %s, a level %d %s (%d)", playCharacter.getDisplayName(),
+				playCharacter.getLevel(), playCharacter.getProfession(), playCharacter.getEntityId()));
 
 		new Thread("Play" + playCharacter.getDisplayName()) {
 			@Override
@@ -183,16 +168,11 @@ public class CharacterSelectAppState extends AbstractLobbyAppState {
 					LoadScreenAppState.queueHide(app);
 					LOG.log(Level.SEVERE, "Failed to select character.", ex);
 					logout();
-					app.getStateManager().getState(HUDMessageAppState.class)
-							.message(Level.SEVERE, "Failed to select character.", ex);
+					app.getStateManager().getState(HUDMessageAppState.class).message(Channel.ERROR,
+							"Failed to select character.", ex);
 				}
 			}
 		}.start();
-	}
-
-	@Override
-	protected LayoutManager createLayerLayout() {
-		return new MigLayout(screen, "", "[" + StartAppState.SIDEBAR_WIDTH + "!][grow, fill]", "[fill, grow]");
 	}
 
 	private void createCharacter() throws NetworkException {
@@ -202,10 +182,10 @@ public class CharacterSelectAppState extends AbstractLobbyAppState {
 	}
 
 	private void logout() {
-//		stateManager.detach(CharacterSelectAppState.this);
+		// stateManager.detach(CharacterSelectAppState.this);
 		network.getClient().close();
-//		stateManager.detach(stateManager.getState(StartAppState.class));
-//		stateManager.attach(new LoginAppState());
+		// stateManager.detach(stateManager.getState(StartAppState.class));
+		// stateManager.attach(new LoginAppState());
 	}
 
 	private Persona createDefaultCharacter() throws NetworkException {
@@ -227,35 +207,34 @@ public class CharacterSelectAppState extends AbstractLobbyAppState {
 	}
 
 	private void deleteCharacter() {
-		final FancyDialogBox dialog = new FancyDialogBox(screen, new Vector2f(15, 15), FancyWindow.Size.LARGE, true) {
+		final DialogBox dialog = new DialogBox(screen, new Vector2f(15, 15), true) {
+			{
+				setStyleClass("large");
+			}
+
 			@Override
 			public void onButtonCancelPressed(MouseButtonEvent evt, boolean toggled) {
-				hideWindow();
+				hide();
 			}
 
 			@Override
 			public void onButtonOkPressed(MouseButtonEvent evt, boolean toggled) {
 				start.deleteCharacter();
 				reload();
-				hideWindow();
+				hide();
 			}
 		};
 		dialog.setDestroyOnHide(true);
-		dialog.getDragBar().setFontColor(screen.getStyle("Common").getColorRGBA("warningColor"));
+		ElementStyle.warningColor(dialog.getDragBar());
 		dialog.setWindowTitle("Confirm Deletion");
 		dialog.setButtonOkText("Delete");
-		dialog.setMsg(String.format("Nuuuu! Are you sure about deleting %s? I mean "
-				+ "like REALLY sure. Deletion is pretty final..", start.getCharacter().getDisplayName(), start.getCharacter()
-				.getLevel(), Icelib.toEnglish(start.getCharacter().getProfession())));
-
-		// TODO packing is what gives that weird 1 pixel gap
-
-		dialog.setIsResizable(false);
-		dialog.setIsMovable(false);
-		dialog.sizeToContent();
-		UIUtil.center(screen, dialog);
-		screen.addElement(dialog, null, true);
-		dialog.showAsModal(true);
+		dialog.setText(String.format(
+				"Are you sure about deleting %s? Once deleted, all of this characters "
+						+ "progress and inventory will be removed.",
+				start.getCharacter().getDisplayName(), start.getCharacter().getLevel(),
+				Icelib.toEnglish(start.getCharacter().getProfession())));
+		dialog.setModal(true);
+		screen.showElement(dialog, ScreenLayoutConstraints.center);
 	}
 
 	private void reload() {
@@ -277,12 +256,7 @@ public class CharacterSelectAppState extends AbstractLobbyAppState {
 			app.run(new Runnable() {
 				@Override
 				public void run() {
-					adjusting = true;
-					try {
-						list.addListItem(characterPanel);
-					} finally {
-						adjusting = false;
-					}
+					list.addScrollableContent(characterPanel);
 				}
 			});
 			c.put(p, characterPanel);

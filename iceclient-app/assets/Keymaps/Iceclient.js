@@ -34,6 +34,11 @@ with (JavaImporter(org.icescene.io, com.jme3.input.controls, com.jme3.input)) {
 		trigger : new KeyTrigger(KeyInput.KEY_P),
 		category : "Gameplay"
 	};
+	__KeyMaps.Targets = {
+		trigger : new KeyTrigger(KeyInput.KEY_T),
+		category : "Targets",
+		modifiers : ModifierKeysAppState.ALT_MASK
+	};
 
 	__KeyMaps.Arm = {
 		trigger : new KeyTrigger(KeyInput.KEY_X),

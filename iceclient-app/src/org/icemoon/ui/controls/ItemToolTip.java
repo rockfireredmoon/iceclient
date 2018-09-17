@@ -3,56 +3,56 @@ package org.icemoon.ui.controls;
 import org.icelib.Icelib;
 import org.icelib.Item;
 import org.iceui.IceUI;
-import org.iceui.controls.XSeparator;
 
+import icetone.controls.containers.Panel;
+import icetone.controls.extras.Separator;
 import icetone.controls.text.Label;
-import icetone.controls.windows.Panel;
-import icetone.core.Element;
-import icetone.core.ElementManager;
+import icetone.core.BaseElement;
+import icetone.core.BaseScreen;
+import icetone.core.Orientation;
+import icetone.core.ZPriority;
 import icetone.core.layout.mig.MigLayout;
 
 public class ItemToolTip extends Panel {
 
-	public ItemToolTip(ElementManager screen, Item item) {
+	public ItemToolTip(BaseScreen screen, Item item) {
 		super(screen);
 		setLayoutManager(new MigLayout(screen, "ins 0"));
 
 		// Display name
 		Label displayNameLabel = new Label(screen);
 		displayNameLabel.setText(item.getDisplayName());
-		// displayNameLabel.setFont(screen.getStyle("Font").getString("strongFont"));
-		if (item.getQuality() != null) {
+		if (item.getQuality() != null)
 			displayNameLabel.setFontColor(IceUI.toRGBA(item.getQuality().getColor()));
-		}
-		addChild(displayNameLabel, "span 2, wrap, growx");
+		addElement(displayNameLabel, "span 2, wrap, growx");
 
 		// Classes
 		Label classes = new Label(screen);
 		classes.setText("KDMR");
-		addChild(classes, "");
+		addElement(classes, "");
 
 		// Level
 		Label levelLabel = new Label(screen);
 		levelLabel.setText(String.format("Level %d", item.getLevel()));
-		addChild(levelLabel, "wrap, growx");
+		addElement(levelLabel, "wrap, growx");
 
 		// Sep 1
-		addChild(new XSeparator(screen, Orientation.HORIZONTAL), "growx, span 2, wrap");
+		addElement(new Separator(screen, Orientation.HORIZONTAL), "growx, span 2, wrap");
 
 		// Type
 		Label typeLabel = new Label(screen);
 		typeLabel.setText(Icelib.toEnglish(item.getEquipType()));
-		addChild(typeLabel, "growx, span 2, wrap");
+		addElement(typeLabel, "growx, span 2, wrap");
 
 		// Armour
 		if (item.getArmourResistMelee() > 0) {
 			Label armourLabel = new Label(screen);
 			armourLabel.setText(String.format("Armour: %d", item.getArmourResistMelee()));
-			addChild(armourLabel, "span 2, wrap, growx");
+			addElement(armourLabel, "span 2, wrap, growx");
 		}
 
 		if (item.hasAnyBonuses()) {
-			addChild(new XSeparator(screen, Orientation.HORIZONTAL), "growx, span 2, wrap");
+			addElement(new Separator(screen, Orientation.HORIZONTAL), "growx, span 2, wrap");
 			createStatLabel("Constitution", item.getBonusConstitution());
 			createStatLabel("Psyche", item.getBonusConstitution());
 			createStatLabel("Spirit", item.getBonusSpirit());
@@ -62,19 +62,20 @@ public class ItemToolTip extends Panel {
 		}
 
 		//
-		addChild(new XSeparator(screen, Orientation.HORIZONTAL), "growx, span 2, wrap");
+		addElement(new Separator(screen, Orientation.HORIZONTAL), "growx, span 2, wrap");
 
 		// Coin
-		Element coinPanel = new Element(screen);
+		BaseElement coinPanel = new BaseElement(screen);
 		coinPanel.setLayoutManager(new MigLayout(screen));
 		Label goldLabel = new Label(screen);
 		goldLabel.setText(String.valueOf(item.getValue()));
-		coinPanel.addChild(goldLabel);
+		coinPanel.addElement(goldLabel);
 		// addChild(coinPanel, "growx, span 2, wrap");
 
-		addClippingLayer(this);
 		screen.addElement(this);
+		setLockToParentBounds(true);
 		sizeToContent();
+		setPriority(ZPriority.TOOLTIP);
 	}
 
 	private void createStatLabel(String label, long value) {
@@ -82,12 +83,12 @@ public class ItemToolTip extends Panel {
 			Label statLabel = new Label(screen);
 			if (value > 0) {
 				statLabel.setText(String.format("+%d %s", value, label));
-				statLabel.setFontColor(screen.getStyle("Common").getColorRGBA("positiveStatColor"));
+				statLabel.setStyleClass("color-positive");
 			} else {
 				statLabel.setText(String.format("-%d %s", value, label));
-				statLabel.setFontColor(screen.getStyle("Common").getColorRGBA("negativeStatColor"));
+				statLabel.setStyleClass("color-negative");
 			}
-			addChild(statLabel, "span 2, wrap, growx");
+			addElement(statLabel, "span 2, wrap, growx");
 		}
 	}
 }

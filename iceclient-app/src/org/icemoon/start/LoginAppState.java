@@ -3,11 +3,13 @@ package org.icemoon.start;
 import java.io.File;
 import java.io.IOException;
 import java.net.URI;
+import java.net.URL;
 import java.util.concurrent.Callable;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import java.util.prefs.Preferences;
 
+import org.apache.commons.io.IOUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.icelib.AppInfo;
 import org.icelib.XDesktop;
@@ -17,29 +19,31 @@ import org.icemoon.network.NetworkListenerAdapter;
 import org.icenet.client.GameServer;
 import org.icescene.HUDMessageAppState;
 import org.icescene.console.ConsoleAppState;
-import org.iceui.UIConstants;
-import org.iceui.controls.BusySpinner;
 import org.iceui.controls.ElementStyle;
-import org.iceui.controls.FancyButton;
-import org.iceui.controls.LinkButton;
-import org.iceui.controls.XSeparator;
 
 import com.jme3.app.Application;
 import com.jme3.app.state.AppStateManager;
 import com.jme3.font.BitmapFont;
+import com.jme3.font.BitmapFont.Align;
 import com.jme3.input.KeyInput;
 import com.jme3.input.event.KeyInputEvent;
-import com.jme3.input.event.MouseButtonEvent;
 
-import icetone.controls.buttons.ButtonAdapter;
 import icetone.controls.buttons.CheckBox;
-import icetone.controls.form.Form;
+import icetone.controls.buttons.PushButton;
+import icetone.controls.containers.SplitPanel;
+import icetone.controls.extras.Separator;
 import icetone.controls.text.Label;
 import icetone.controls.text.Password;
 import icetone.controls.text.TextField;
+import icetone.controls.text.XHTMLLabel;
+import icetone.core.BaseElement;
+import icetone.core.Form;
+import icetone.core.Orientation;
 import icetone.core.Element;
-import icetone.core.Element.Orientation;
+import icetone.core.layout.Border;
+import icetone.core.layout.BorderLayout;
 import icetone.core.layout.mig.MigLayout;
+import icetone.extras.controls.BusySpinner;
 import net.east301.keyring.BackendNotSupportedException;
 import net.east301.keyring.Keyring;
 
@@ -50,9 +54,10 @@ public class LoginAppState extends AbstractIntroAppState {
 	private TextField passwordField;
 	private TextField usernameField;
 	private CheckBox rememberMeField;
-	private ButtonAdapter requestButton;
+	private PushButton requestButton;
 	protected NetworkAppState network;
 	private String authToken;
+	private XHTMLLabel news;
 	private static Keyring keyring;
 
 	public LoginAppState() {
@@ -98,7 +103,7 @@ public class LoginAppState extends AbstractIntroAppState {
 		super.initialize(stateManager, app);
 
 		if (usernameField != null)
-			screen.setTabFocusElement(usernameField);
+			screen.setKeyboardFocus(usernameField);
 
 		if (authToken != null) {
 			this.app.getWorldLoaderExecutorService().execute(new Runnable() {
@@ -107,6 +112,8 @@ public class LoginAppState extends AbstractIntroAppState {
 					login();
 				}
 			});
+		} else {
+			this.app.getWorldLoaderExecutorService().execute(() -> loadNews());
 		}
 	}
 
@@ -114,7 +121,7 @@ public class LoginAppState extends AbstractIntroAppState {
 		final String username = usernameField == null ? null : usernameField.getText();
 		final char[] password = passwordField == null ? null : passwordField.getText().toCharArray();
 		if (usernameField != null) {
-			boolean remember = rememberMeField.getIsChecked();
+			boolean remember = rememberMeField.isChecked();
 			if (remember) {
 				try {
 					String serviceName = getServiceName();
@@ -136,7 +143,8 @@ public class LoginAppState extends AbstractIntroAppState {
 				app.enqueue(new Callable<Void>() {
 					@Override
 					public Void call() throws Exception {
-						requestButton.setIsEnabled(false);
+						if (requestButton != null)
+							requestButton.setEnabled(false);
 						createBusyWindow("Connecting to server ..");
 						return null;
 					}
@@ -149,7 +157,7 @@ public class LoginAppState extends AbstractIntroAppState {
 					@Override
 					public Void call() throws Exception {
 						if (requestButton != null)
-							requestButton.setIsEnabled(true);
+							requestButton.setEnabled(true);
 						createWindowForState();
 						return null;
 					}
@@ -178,55 +186,72 @@ public class LoginAppState extends AbstractIntroAppState {
 		}
 	}
 
+	private void loadNews() {
+		try {
+			// TODO not quite right
+			URL url = new URL("http://" + network.getGameServer().getSimulatorAddress() + "/in_game_news");
+			String content = IOUtils.toString(url.openStream());
+			app.enqueue(() -> news.setText(content));
+
+		} catch (Exception e) {
+			app.enqueue(() -> news.setText("Failed to load news. " + e.getMessage()));
+		}
+	}
+
 	private void createAuthenticateWithServiceWindow() {
-		Element contentArea = contentWindow.getContentArea();
+		BaseElement contentArea = contentWindow.getContentArea();
 		contentArea.removeAllChildren();
 		final MigLayout layout = new MigLayout(screen, "fill", "push[][]push", "push[]push"); // NOI18N
 		contentArea.setLayoutManager(layout);
 		final BusySpinner busySpinner = new BusySpinner(screen);
-		busySpinner.setSpeed(UIConstants.SPINNER_SPEED);
-		contentArea.addChild(busySpinner);
-		contentArea.addChild(new Label("Authenticating with service", screen));
+		busySpinner.setSpeed(BusySpinner.DEFAULT_SPINNER_SPEED);
+		contentArea.addElement(busySpinner);
+		contentArea.addElement(new Label("Authenticating with service", screen));
 	}
 
 	private void createLoginWindow() {
-		Element contentArea = contentWindow.getContentArea();
+
+		BaseElement contentArea = new Element(screen);
+
+		// Element contentArea = contentWindow.getContentArea();
 		contentArea.removeAllChildren();
 		Label label;
-		final MigLayout layout = new MigLayout(screen, "wrap 2", "", ""); // NOI18N
+		final MigLayout layout = new MigLayout(screen, "wrap 2, fill", "", ""); // NOI18N
 		contentArea.setLayoutManager(layout);
 
-		requestButton = new FancyButton("Create Account", screen) {
-			@Override
-			public void onButtonMouseLeftUp(MouseButtonEvent evt, boolean toggled) {
-				try {
-					XDesktop d = XDesktop.getDesktop();
-					d.browse(new URI("http://www.theanubianwar.com"));
-				} catch (Exception e) {
-					LOG.log(Level.SEVERE, "Could not open site.", e);
-				}
+		requestButton = new PushButton(screen, "Create Account") {
+			{
+				setStyleClass("fancy");
 			}
 		};
+		requestButton.onMouseReleased(evt -> {
+			try {
+				XDesktop d = XDesktop.getDesktop();
+				d.browse(new URI("http://www.theanubianwar.com"));
+			} catch (Exception e) {
+				LOG.log(Level.SEVERE, "Could not open site.", e);
+			}
+		});
 
-		contentArea.addChild(new Label("New to Earth Eternal - Anubian War?"), "span 2, ax 50%");
-		contentArea.addChild(requestButton, "span 2, ax 50%");
-		contentArea.addChild(new XSeparator(screen, Orientation.HORIZONTAL), "span 2, ax 50%");
+		contentArea.addElement(new Label("New to Earth Eternal - Anubian War?"), "span 2, ax 50%");
+		contentArea.addElement(requestButton, "span 2, ax 50%");
+		contentArea.addElement(new Separator(screen, Orientation.HORIZONTAL), "span 2, growx, ax 50%");
 
-		contentArea.addChild(new Label(".. or login with an existing account .. "), "span 2, ax 50%");
+		contentArea.addElement(new Label(".. or login with an existing account .. "), "span 2, ax 50%");
 
 		// Username
 
 		label = new Label("Username", screen);
 		label.setTextAlign(BitmapFont.Align.Left);
-		contentArea.addChild(ElementStyle.medium(screen, label), "shrink 0");
+		contentArea.addElement(ElementStyle.medium(label), "shrink 0");
 
 		usernameField = new TextField(screen);
-		contentArea.addChild(ElementStyle.medium(screen, usernameField), "wrap, w 200");
+		contentArea.addElement(ElementStyle.medium(usernameField), "wrap, w 200");
 
 		// Password
 		label = new Label("Password", screen);
 		label.setTextAlign(BitmapFont.Align.Left);
-		contentArea.addChild(ElementStyle.medium(screen, label), "shrink 0");
+		contentArea.addElement(ElementStyle.medium(label), "shrink 0");
 
 		passwordField = new Password(screen) {
 			@Override
@@ -237,40 +262,40 @@ public class LoginAppState extends AbstractIntroAppState {
 				}
 			}
 		};
-		contentArea.addChild(ElementStyle.medium(screen, passwordField), "w 200");
+		contentArea.addElement(ElementStyle.medium(passwordField), "w 200");
 
 		if (app.getCommandLine().getArgList().isEmpty()) {
 
-			contentArea.addChild(new XSeparator(screen, Orientation.HORIZONTAL), "span 2, ax 50%");
-			contentArea.addChild(new Label(network.getGameServer().getDisplayAddress()), "span 2, ax 50%");
-			LinkButton lb = new LinkButton("Choose another server", screen) {
-				@Override
-				public void onButtonMouseLeftUp(MouseButtonEvent evt, boolean toggled) {
-					ConsoleAppState cas = app.getStateManager().getState(ConsoleAppState.class);
-					if (cas != null)
-						app.getStateManager().detach(cas);
-					app.getStateManager().detach(LoginAppState.this);
-					app.getStateManager().detach(network);
-					app.getStateManager().attach(new ServerSelectAppState());
+			contentArea.addElement(new Separator(screen, Orientation.HORIZONTAL), "span 2, growx, ax 50%");
+			contentArea.addElement(new Label(network.getGameServer().getDisplayAddress()), "span 2, ax 50%");
+			contentArea.addElement((new PushButton(screen, "Choose another server") {
+				{
+					setStyleClass("fancy cancel");
 				}
-			};
-			contentArea.addChild(ElementStyle.small(lb), "span 2, ax 50%");
+			}.onMouseReleased(evt -> {
+				ConsoleAppState cas = app.getStateManager().getState(ConsoleAppState.class);
+				if (cas != null)
+					app.getStateManager().detach(cas);
+				app.getStateManager().detach(LoginAppState.this);
+				app.getStateManager().detach(network);
+				app.getStateManager().attach(new ServerSelectAppState());
+			})), "span 2, ax 50%, shrink 0");
 		}
 
 		// Remember me
 		rememberMeField = new CheckBox(screen);
-		rememberMeField.setLabelText("Remember me");
-		contentArea.addChild(rememberMeField);
+		rememberMeField.setText("Remember me");
+		contentArea.addElement(rememberMeField);
 
 		// Login
-		FancyButton loginButton = new FancyButton(screen) {
-			@Override
-			public void onButtonMouseLeftUp(MouseButtonEvent evt, boolean toggled) {
-				login();
+		PushButton loginButton = new PushButton(screen) {
+			{
+				setStyleClass("fancy");
 			}
 		};
+		loginButton.onMouseReleased(evt -> login());
 		loginButton.setText("Login");
-		contentArea.addChild(loginButton, "al right");
+		contentArea.addElement(loginButton, "al right");
 
 		// For for the login
 		Form loginForm = new Form(screen);
@@ -296,8 +321,28 @@ public class LoginAppState extends AbstractIntroAppState {
 				}
 				passwordField.setText(password);
 			}
-			rememberMeField.setIsChecked(true);
+			rememberMeField.setChecked(true);
 		}
+
+		// News
+		news = new XHTMLLabel(screen);
+		Element el = new Element(screen, new BorderLayout());
+		el.addElement(ElementStyle.altColor(ElementStyle.medium(new Label("News", screen))).setTextAlign(Align.Center),
+				Border.NORTH);
+		el.addElement(news, Border.CENTER);
+		news.setText("Loading ....");
+
+		// Split
+		SplitPanel split = new SplitPanel(screen, Orientation.HORIZONTAL);
+		split.setLeftOrTop(contentArea);
+		split.setRightOrBottom(el);
+		split.setDefaultDividerLocationRatio(0.5f);
+
+		// Window content
+		BaseElement windowContentArea = contentWindow.getContentArea();
+		windowContentArea.removeAllChildren();
+		windowContentArea.setLayoutManager(new BorderLayout());
+		windowContentArea.addElement(split);
 	}
 
 	private String getServiceName() {

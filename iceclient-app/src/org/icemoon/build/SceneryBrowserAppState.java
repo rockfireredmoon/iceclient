@@ -11,31 +11,28 @@ import org.icenet.client.ClientListenerAdapter;
 import org.icescene.IcemoonAppState;
 import org.icescene.IcesceneApp;
 import org.icescene.build.SelectionManager;
-import org.iceui.HPosition;
-import org.iceui.VPosition;
-import org.iceui.controls.FancyButton;
-import org.iceui.controls.FancyPersistentWindow;
-import org.iceui.controls.FancyWindow.Size;
-import org.iceui.controls.SaveType;
 
 import com.jme3.app.state.AppStateManager;
 import com.jme3.font.BitmapFont;
-import com.jme3.input.event.MouseButtonEvent;
-import com.jme3.math.Vector2f;
+import com.jme3.font.BitmapFont.Align;
+import com.jme3.font.BitmapFont.VAlign;
 import com.jme3.math.Vector3f;
 
-import icetone.controls.form.Form;
-import icetone.core.Element;
+import icetone.controls.buttons.PushButton;
+import icetone.core.BaseElement;
+import icetone.core.Form;
+import icetone.core.Size;
 import icetone.core.layout.FlowLayout;
 import icetone.core.layout.mig.MigLayout;
-import icetone.core.utils.UIDUtil;
+import icetone.extras.windows.PersistentWindow;
+import icetone.extras.windows.SaveType;
 
 public class SceneryBrowserAppState extends IcemoonAppState<BuildAppState> {
 
-	private FancyPersistentWindow dialog;
+	private PersistentWindow dialog;
 	private NetworkAppState network;
 	private SceneryLoader sceneryLoader;
-	private FancyButton btnOk;
+	private PushButton btnOk;
 	private Form form;
 	private SelectionManager selectionManager;
 	private Vector3f camLoc;
@@ -69,8 +66,8 @@ public class SceneryBrowserAppState extends IcemoonAppState<BuildAppState> {
 		selectionManager = stateManager.getState(BuildAppState.class).getSelectionManager();
 		sceneryLoader = stateManager.getState(SceneryAppState.class).getLoader();
 
-		dialog = new FancyPersistentWindow(screen, Config.SCENERY_BROWSER, 0, VPosition.TOP, HPosition.LEFT,
-				new Vector2f(470, 438), Size.SMALL, true, SaveType.POSITION_AND_SIZE, prefs) {
+		dialog = new PersistentWindow(screen, Config.SCENERY_BROWSER, 0, VAlign.Top, Align.Left, new Size(470, 438),
+				true, SaveType.POSITION_AND_SIZE, prefs) {
 			@Override
 			protected void onCloseWindow() {
 				app.getStateManager().detach(SceneryBrowserAppState.this);
@@ -80,24 +77,25 @@ public class SceneryBrowserAppState extends IcemoonAppState<BuildAppState> {
 		form = new Form(screen);
 
 		// Button Bar
-		Element buttons = new Element(screen);
+		BaseElement buttons = new BaseElement(screen);
 		buttons.setLayoutManager(new FlowLayout(4, BitmapFont.Align.Center));
-		btnOk = new FancyButton(screen, UIDUtil.getUID()) {
-			@Override
-			public void onButtonMouseLeftUp(MouseButtonEvent evt, boolean toggled) {
+		btnOk = new PushButton(screen, "Ok"){
+			{
+				setStyleClass("fancy");
 			}
 		};
 		btnOk.setText("Ok");
-		buttons.addChild(btnOk);
+		buttons.addElement(btnOk);
 		form.addFormElement(btnOk);
 
 		// Dialog
 		dialog.getContentArea().setLayoutManager(new MigLayout(screen, "wrap 1", "[fill, grow]", "[fill, grow][]"));
-		dialog.getContentArea().addChild(sceneryBrowser = new SceneryBrowserPanel(screen, sceneryLoader, selectionManager));
-		dialog.getContentArea().addChild(buttons, "growx");
+		dialog.getContentArea()
+				.addElement(sceneryBrowser = new SceneryBrowserPanel(screen, sceneryLoader, selectionManager));
+		dialog.getContentArea().addElement(buttons, "growx");
 		dialog.setDestroyOnHide(true);
 		dialog.setWindowTitle("Scenery Browser");
-		dialog.showWithEffect();
+		dialog.show();
 		screen.addElement(dialog);
 	}
 
@@ -125,6 +123,6 @@ public class SceneryBrowserAppState extends IcemoonAppState<BuildAppState> {
 		if (network.getClient() != null) {
 			network.getClient().removeListener(netListener);
 		}
-		dialog.hideWithEffect();
+		dialog.hide();
 	}
 }

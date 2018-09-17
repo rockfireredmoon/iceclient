@@ -3,7 +3,6 @@ package org.icemoon.game.inventory;
 import java.util.List;
 import java.util.concurrent.Callable;
 import java.util.logging.Level;
-import java.util.logging.Logger;
 
 import org.icelib.EquipType;
 import org.icelib.Persona;
@@ -16,24 +15,20 @@ import org.icenet.NetworkException;
 import org.icescene.IcemoonAppState;
 import org.icescene.IcesceneApp;
 import org.icescene.tools.DragContext;
-import org.iceui.HPosition;
-import org.iceui.VPosition;
-import org.iceui.controls.FancyPersistentWindow;
-import org.iceui.controls.FancyWindow;
-import org.iceui.controls.SaveType;
-import org.iceui.controls.UIUtil;
 
 import com.jme3.app.state.AppStateManager;
+import com.jme3.font.BitmapFont.Align;
+import com.jme3.font.BitmapFont.VAlign;
 import com.jme3.input.event.MouseButtonEvent;
 import com.jme3.math.Vector2f;
-import com.jme3.scene.Spatial;
 
+import icetone.core.BaseElement;
+import icetone.core.BaseScreen;
 import icetone.core.Element;
-import icetone.core.ElementManager;
 import icetone.core.layout.GridLayout;
-import icetone.core.layout.LUtil;
 import icetone.core.layout.mig.MigLayout;
-import icetone.core.utils.UIDUtil;
+import icetone.extras.windows.PersistentWindow;
+import icetone.extras.windows.SaveType;
 
 /**
  * Displays the players inventory.
@@ -45,11 +40,9 @@ import icetone.core.utils.UIDUtil;
 public class InventoryAppState extends IcemoonAppState<HUDAppState> {
 
 	private final static int MIN_INVENTORY_COLUMNS = 1;
-	private final static Logger LOG = Logger.getLogger(InventoryAppState.class.getName());
 	private static final String INVENTORY = "Inventory";
 	private InventoryWindow inventoryWindow;
 	private InventoryAndEquipment inventory;
-	private boolean adjusting;
 
 	public InventoryAppState() {
 		super(Config.get());
@@ -63,7 +56,7 @@ public class InventoryAppState extends IcemoonAppState<HUDAppState> {
 	@Override
 	protected void postInitialize() {
 		inventory = stateManager.getState(GameAppState.class).getInventory();
-		inventoryWindow = (InventoryWindow) screen.getElementById(INVENTORY);
+		inventoryWindow = (InventoryWindow) screen.getElementByStyleId(INVENTORY);
 		if (inventoryWindow != null) {
 			// In case the special effects have not finished yet
 			inventoryWindow.hide();
@@ -76,18 +69,16 @@ public class InventoryAppState extends IcemoonAppState<HUDAppState> {
 			}
 		};
 		inventoryWindow.setWindowTitle("Inventory");
-		inventoryWindow.setIsMovable(true);
-		inventoryWindow.setIsResizable(true);
+		inventoryWindow.setMovable(true);
+		inventoryWindow.setResizable(true);
 		inventory.addListener(inventoryWindow);
 
-		final Element contentArea = inventoryWindow.getContentArea();
+		final BaseElement contentArea = inventoryWindow.getContentArea();
 		contentArea.setLayoutManager(new MigLayout(screen, "fill"));
 
 		// Show
 		inventoryWindow.setDestroyOnHide(true);
-		screen.addElement(inventoryWindow);
-		inventoryWindow.hide();
-		inventoryWindow.showWindow();
+		screen.showElement(inventoryWindow);
 
 		// Listen for inventory changes
 		inventory.addListener(inventoryWindow);
@@ -103,10 +94,10 @@ public class InventoryAppState extends IcemoonAppState<HUDAppState> {
 	@Override
 	protected void onCleanup() {
 		inventory.removeListener(inventoryWindow);
-		inventoryWindow.hideWindow();
+		inventoryWindow.hide();
 	}
 
-	class InventoryWindow extends FancyPersistentWindow implements InventoryAndEquipment.Listener {
+	class InventoryWindow extends PersistentWindow implements InventoryAndEquipment.Listener {
 
 		private final Element bagPanel;
 		private final Vector2f offset;
@@ -115,28 +106,21 @@ public class InventoryAppState extends IcemoonAppState<HUDAppState> {
 		private int thisRows = -1;
 		private int thisCols = -1;
 
-		InventoryWindow(ElementManager screen) {
-			super(screen, INVENTORY, screen.getStyle("Common").getInt("defaultWindowOffset"), VPosition.BOTTOM, HPosition.RIGHT,
-					new Vector2f(400, 400), FancyWindow.Size.SMALL, true, SaveType.POSITION_AND_SIZE, Config.get());
-			offset = screen.getStyle("InventoryWindow").getVector2f("bagsOffset");
+		InventoryWindow(BaseScreen screen) {
+			super(screen, INVENTORY, VAlign.Bottom, Align.Right, null, true, SaveType.POSITION_AND_SIZE, Config.get());
 			dragContext = stateManager.getState(GameAppState.class).getDragContext();
-
-			// Bag Panel
-			bagPanel = new Element(screen, UIDUtil.getUID(), LUtil.LAYOUT_SIZE,
-					screen.getStyle("InventoryWindow").getVector4f("bagsResizeBorders"),
-					screen.getStyle("InventoryWindow").getString("bagsDefaultImg")) {
-			};
+			bagPanel = new Element(screen);
+			bagPanel.addStyleClass("bags");
 			bagPanel.setLayoutManager(new GridLayout(4, 1));
-
-			content.setMinDimensions(screen.getStyle("InventoryWindow").getVector2f("minSize"));
-			//
 			content.setLayoutManager(layout = new MigLayout(screen));
 			doRebuild();
-			addChild(bagPanel);
+			addElement(bagPanel);
+			offset = bagPanel.getPixelPosition();
 
 		}
 
-		public void slotChanged(InventoryAndEquipment.InventoryItem oldItem, InventoryAndEquipment.InventoryItem newItem) {
+		public void slotChanged(InventoryAndEquipment.InventoryItem oldItem,
+				InventoryAndEquipment.InventoryItem newItem) {
 			// TODO just rebuild for now
 			rebuild(null, null);
 		}
@@ -149,13 +133,10 @@ public class InventoryAppState extends IcemoonAppState<HUDAppState> {
 			}
 			app.enqueue(new Callable<Void>() {
 				public Void call() throws Exception {
-					adjusting = true;
-					try {
+					runAdjusting(() -> {
 						adjustLayout();
 						doRebuild();
-					} finally {
-						adjusting = false;
-					}
+					});
 					return null;
 				}
 			});
@@ -166,7 +147,7 @@ public class InventoryAppState extends IcemoonAppState<HUDAppState> {
 			bagPanel.removeAllChildren();
 			for (InventoryAndEquipment.EquipmentItem b : inventory.getContainerItems()) {
 				ContainerDroppable bagButton = new ContainerDroppable(dragContext, screen, inventory, b);
-				bagPanel.addChild(bagButton);
+				bagPanel.addElement(bagButton);
 				if (b.getItem() == null) {
 					LOG.info(String.format("Adding empty bag slot %s", b.getSlot()));
 				} else {
@@ -179,31 +160,15 @@ public class InventoryAppState extends IcemoonAppState<HUDAppState> {
 				if (invItem.getItem() == null) {
 					LOG.info(String.format("Adding empty inventory slot %d. ", i));
 				} else {
-					LOG.info(String.format("Adding inventory slot %d with %s. ", i, invItem.getItem().getDisplayName()));
+					LOG.info(
+							String.format("Adding inventory slot %d with %s. ", i, invItem.getItem().getDisplayName()));
 				}
 
-				//
-				// DEBUG FOR CONFLICTING ID WEIRDNESS
-				//
-				if (screen.getElementById("InventoryItem" + invItem.getSlot()) != null) {
-					Element p = screen.getElementById("InventoryItem" + invItem.getSlot());
-					System.err.println("WTF: ");
-					for (Spatial s : getChildren()) {
-						System.err.println("         " + s.getName());
-					}
-					System.err.println("=---");
-					for (Element el : getElements()) {
-						System.err.println("         " + el.getUID());
-					}
-					System.err.println("dump =---");
-					UIUtil.dump(LUtil.getRootElement(this), 0);
-				}
-
-				InventoryItemDroppable slotButton = new InventoryItemDroppable(dragContext, screen, inventory, invItem) {
+				InventoryItemDroppable slotButton = new InventoryItemDroppable(dragContext, screen, inventory,
+						invItem) {
 					@Override
-					protected boolean doEndDraggableDrag(MouseButtonEvent mbe, Element elmnt) {
+					protected boolean doEndDraggableDrag(MouseButtonEvent mbe, BaseElement elmnt) {
 
-						Vector2f pos = getPosition();
 						LOG.info(String.format("Finished item drag of %s on to %s", toString(), elmnt));
 						if (elmnt != null) {
 							if (elmnt instanceof InventoryItemDroppable && !elmnt.equals(getParent())) {
@@ -224,15 +189,15 @@ public class InventoryAppState extends IcemoonAppState<HUDAppState> {
 									if (eqItem.getItem() == null) {
 										// Empty slot, can drop straight in
 										try {
-											LOG.info(String.format("Equipping %s to %s", invItem.getItem().getDisplayName(),
-													eqItem.getSlot()));
+											LOG.info(String.format("Equipping %s to %s",
+													invItem.getItem().getDisplayName(), eqItem.getSlot()));
 											inventory.equip(eqItem.getSlot(), invItem);
 											removeAllChildren();
 											screen.removeElement(draggable);
 											return true;
 										} catch (NetworkException ex) {
-											LOG.log(Level.SEVERE,
-													String.format("Failed to equip %s.", eqItem.getItem().getDisplayName()), ex);
+											LOG.log(Level.SEVERE, String.format("Failed to equip %s.",
+													eqItem.getItem().getDisplayName()), ex);
 										}
 									} else {
 										// In one step, equip the item from the
@@ -247,8 +212,8 @@ public class InventoryAppState extends IcemoonAppState<HUDAppState> {
 											screen.removeElement(draggable);
 											return true;
 										} catch (NetworkException ex) {
-											LOG.log(Level.SEVERE,
-													String.format("Failed to swap %s.", invItem.getItem().getDisplayName()), ex);
+											LOG.log(Level.SEVERE, String.format("Failed to swap %s.",
+													invItem.getItem().getDisplayName()), ex);
 										}
 									}
 								} else {
@@ -272,14 +237,12 @@ public class InventoryAppState extends IcemoonAppState<HUDAppState> {
 						return false;
 					}
 				};
-				content.addChild(slotButton);
+				content.addElement(slotButton);
 			}
 
 			// Add plug icons for any slots that are not usable
 			for (int i = inventory.getTotalBagSlots(); i < (thisRows * thisCols); i++) {
-				content.addChild(new Element(screen, UIDUtil.getUID(), screen.getStyle("SlotButton").getVector2f("defaultSize"),
-						screen.getStyle("SlotButton").getVector4f("resizeBorders"),
-						screen.getStyle("SlotButton").getString("plugImg")));
+				content.addElement(new Element(screen).addStyleClass("slot-button"));
 			}
 
 			content.layoutChildren();
@@ -293,21 +256,21 @@ public class InventoryAppState extends IcemoonAppState<HUDAppState> {
 
 		@Override
 		protected void onPersistentWindowResizeHook() {
-			if (!adjusting) {
+			if (!isAdjusting()) {
 				doRebuild();
 			}
 		}
 
 		@Override
 		protected final void onBeforeContentLayout() {
-			if (!adjusting) {
+			if (!isAdjusting()) {
 				adjustLayout();
 			}
 		}
 
 		@Override
 		protected final void onContentLayout() {
-			if (!adjusting) {
+			if (!isAdjusting()) {
 				positionBagPanel();
 			}
 		}
@@ -346,19 +309,22 @@ public class InventoryAppState extends IcemoonAppState<HUDAppState> {
 
 		private void positionBagPanel() {
 			if (bagPanel != null) {
-				Vector2f bagPref = LUtil.getBoundPreferredSize(bagPanel);
-				LUtil.setBounds(bagPanel, ((getWidth() - bagPref.x) / 2) + offset.x, getHeight() + offset.y, bagPref.x, bagPref.y);
+				Vector2f bagPref = bagPanel.calcPreferredSize();
+				bagPanel.setBounds(((getWidth() - bagPref.x) / 2) + offset.x, getHeight() + offset.y, bagPref.x,
+						bagPref.y);
 			}
 		}
 
 		private int getSlots() {
 			float availableWidth = getAvailableWidth();
-			int slotsWide = Math.max(1, (int) (availableWidth / screen.getStyle("SlotButton").getVector2f("defaultSize").x));
-			return slotsWide;
+			if (content.getElements().isEmpty())
+				return 1;
+			else
+				return (int) (availableWidth / content.getElements().get(0).calcPreferredSize().x);
 		}
 
 		private float getAvailableWidth() {
-			return content.getWidth() - content.borders.y - content.borders.z;
+			return content.getWidth() - content.getTotalPadding().x;
 		}
 	}
 }

@@ -202,7 +202,7 @@ public class PlayerSpatialControl extends AbstractMoveableProduceConsumerControl
 
 		// Move
 		if (moveableControl.isMovingToTarget()) {
-			Vector3f newLoc = spatial.getLocalTranslation().interpolate(moveableControl.getTargetLocation(), tpf * 4);
+			Vector3f newLoc = spatial.getLocalTranslation().interpolateLocal(moveableControl.getTargetLocation(), tpf * 4);
 			elev = getTerrainElevation(newLoc.x, newLoc.z);
 			Icelib.removeMe("XXXX Moving to target elev = %f, for %s", elev, newLoc);
 			spatial.setLocalTranslation(newLoc.x, (elev == Float.MIN_VALUE ? 0 : elev) + offset, newLoc.z);

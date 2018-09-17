@@ -5,32 +5,29 @@ import org.icelib.Icelib;
 import org.icemoon.Config;
 import org.icemoon.Iceclient;
 import org.icemoon.audio.AudioAppState;
+import org.icemoon.start.AudioVideoToolButtons.AudioPopup;
 import org.icenet.client.GameServer;
 import org.icescene.DisplaySettingsWindow;
 import org.icescene.IcesceneApp;
 import org.icescene.SceneConfig;
 import org.icescene.audio.AudioQueue;
 import org.icescene.audio.Music;
-import org.iceui.UIConstants;
-import org.iceui.controls.FancyButton;
-import org.iceui.controls.FancyPositionableWindow;
-import org.iceui.controls.FancyWindow;
 
-import com.jme3.input.event.MouseButtonEvent;
 import com.jme3.math.Vector2f;
 
 import icetone.controls.buttons.CheckBox;
+import icetone.controls.buttons.PushButton;
 import icetone.controls.lists.ComboBox;
 import icetone.controls.lists.FloatRangeSliderModel;
 import icetone.controls.lists.Slider;
 import icetone.controls.text.Label;
+import icetone.core.BaseScreen;
+import icetone.core.Orientation;
+import icetone.core.BaseScreen;
 import icetone.core.Element;
-import icetone.core.ElementManager;
-import icetone.core.Screen;
-import icetone.core.layout.LUtil;
+import icetone.core.ToolKit;
 import icetone.core.layout.mig.MigLayout;
-import icetone.core.utils.UIDUtil;
-import icetone.effects.Effect;
+import icetone.extras.windows.PositionableFrame;
 
 /**
  * Component that provides the audio / video configuration buttons that open
@@ -38,76 +35,83 @@ import icetone.effects.Effect;
  */
 public class AudioVideoToolButtons extends Element {
 
-	private final FancyButton audio;
-	private final FancyButton video;
+	private PushButton audio;
+	private PushButton video;
 	private AudioPopup audioPopup;
 	private DisplaySettingsWindow videoPopup;
 
-	public AudioVideoToolButtons(final Screen screen) {
+	public AudioVideoToolButtons(final BaseScreen screen) {
 		super(screen);
 		setAsContainerOnly();
 		setLayoutManager(new MigLayout(screen, "ins 0", "[][]", "[]"));
 
-		video = new FancyButton(screen) {
-			@Override
-			public void onButtonMouseLeftUp(MouseButtonEvent evt, boolean toggled) {
-				if (audioPopup != null && audioPopup.getIsVisible()) {
-					audioPopup.hideWithEffect();
-					audio.setIsEnabled(true);
-				}
-				video.setIsEnabled(false);
-				videoPopup = new DisplaySettingsWindow(screen, new Vector2f(260, 160),
-						((IcesceneApp) screen.getApplication()).getAppSettingsName()) {
-					@Override
-					protected void onCloseWindow() {
-						super.onCloseWindow();
-						video.setIsEnabled(true);
-					}
-
-					@Override
-					protected void onSave() {
-						// Hide
-						videoPopup.hideWithEffect();
-						video.setIsEnabled(true);
-					}
-				};
-				videoPopup.setY(LUtil.getAbsoluteY(audio) + audio.getHeight());
-				videoPopup.setX(audio.getAbsoluteX() - videoPopup.getWidth() + audio.getWidth());
-				videoPopup.showWithEffect();
+		video = new PushButton(screen) {
+			{
+				setStyleClass("fancy");
 			}
 		};
+		video.onMouseReleased(evt -> {
+			if (audioPopup != null && audioPopup.isVisible()) {
+				audioPopup.hide();
+				audio.setEnabled(true);
+			}
+			video.setEnabled(false);
+			videoPopup = new DisplaySettingsWindow(screen, new Vector2f(260, 160),
+					((IcesceneApp) screen.getApplication()).getAppSettingsName()) {
+				@Override
+				protected void onCloseWindow() {
+					super.onCloseWindow();
+					video.setEnabled(true);
+				}
+
+				@Override
+				protected void onSave() {
+					// Hide
+					videoPopup.hide();
+					video.setEnabled(true);
+				}
+			};
+			videoPopup.setY(audio.getAbsoluteY() + audio.getHeight());
+			videoPopup.setX(audio.getAbsoluteX() - videoPopup.getWidth() + audio.getWidth());
+			videoPopup.show();
+			if (audioPopup != null && audioPopup.isVisible()) {
+				audioPopup.hide();
+				audio.setEnabled(true);
+			}
+		});
 		video.setText("Video");
-		addChild(video);
+		addElement(video);
 
-		audio = new FancyButton(screen) {
-			@Override
-			public void onButtonMouseLeftUp(MouseButtonEvent evt, boolean toggled) {
-				if (videoPopup != null && videoPopup.getIsVisible()) {
-					videoPopup.hideWithEffect();
-					video.setIsEnabled(true);
-				}
-				audio.setIsEnabled(false);
-				audioPopup = new AudioPopup(screen,
-						screen.getApplication().getStateManager().getState(AudioAppState.class));
-				audioPopup.setY(LUtil.getAbsoluteY(audio) + audio.getHeight());
-				audioPopup.setX(audio.getAbsoluteX() - audioPopup.getWidth() + audio.getWidth());
-				audioPopup
-						.setSelectedMusic(Config.get().get(Config.AUDIO_START_MUSIC, Config.AUDIO_START_MUSIC_DEFAULT));
-				audioPopup.showWithEffect();
+		audio = new PushButton(screen) {
+			{
+				setStyleClass("fancy");
 			}
 		};
+		audio.onMouseReleased(evt -> {
+			if (videoPopup != null && videoPopup.isVisible()) {
+				videoPopup.hide();
+				video.setEnabled(true);
+			}
+			audio.setEnabled(false);
+			audioPopup = new AudioPopup(screen,
+					screen.getApplication().getStateManager().getState(AudioAppState.class));
+			audioPopup.setY(audio.getAbsoluteY() + audio.getHeight());
+			audioPopup.setX(audio.getAbsoluteX() - audioPopup.getWidth() + audio.getWidth());
+			audioPopup.setSelectedMusic(Config.get().get(Config.AUDIO_START_MUSIC, Config.AUDIO_START_MUSIC_DEFAULT));
+			audioPopup.show();
+		});
 		audio.setText("Music");
-		addChild(audio);
+		addElement(audio);
 	}
 
 	@Override
 	public void controlHideHook() {
 		super.controlHideHook();
 		if (audioPopup != null) {
-			audioPopup.hideWithEffect();
+			audioPopup.hide();
 		}
 		if (videoPopup != null) {
-			videoPopup.hideWithEffect();
+			videoPopup.hide();
 		}
 	}
 
@@ -115,41 +119,41 @@ public class AudioVideoToolButtons extends Element {
 		Config.get().put(Config.AUDIO_START_MUSIC, path);
 	}
 
-	class AudioPopup extends FancyPositionableWindow {
+	class AudioPopup extends PositionableFrame {
 
 		private boolean adjusting = true;
 		private final ComboBox<String> music;
 
-		public AudioPopup(final ElementManager screen, final AudioAppState audio) {
-			super(screen, UIDUtil.getUID(), Vector2f.ZERO, new Vector2f(260, 160), FancyWindow.Size.SMALL, true);
-			setIsMovable(false);
-			setIsResizable(false);
-			content.setLayoutManager(new MigLayout(screen, "wrap 2", "[][fill, grow]", "[]"));
+		public AudioPopup(final BaseScreen screen, final AudioAppState audio) {
+			super(screen, null, Vector2f.ZERO, null, true);
+			setMovable(false);
+			setResizable(false);
+			content.setLayoutManager(
+					new MigLayout(screen, "wrap 2", "[][:140:,fill, grow]", "[shrink 0][][][][shrink 0]"));
 			setWindowTitle("Music");
-			music = new ComboBox<String>(screen) {
-				@Override
-				public void onChange(int selectedIndex, String value) {
-					if (!adjusting) {
-						audio.clearQueuesAndStopAudio(true, AudioQueue.MUSIC);
-						onChangeMusic(value);
+			music = new ComboBox<String>(screen);
+			music.onChange(evt -> {
+				if (!adjusting) {
+					audio.clearQueuesAndStopAudio(true, AudioQueue.MUSIC);
+					String value = evt.getNewValue();
+					onChangeMusic(value);
+					if (!value.equals("")) {
+						if (evt.getNewValue().equals(Config.AUDIO_START_MUSIC_SERVER_DEFAULT)) {
+							GameServer srv = ((Iceclient) ToolKit.get().getApplication()).getCurrentGameServer();
+							if (srv != null && StringUtils.isNotBlank(srv.getStartMusic()))
+								value = srv.getStartMusic();
+							else
+								value = "";
+						}
 						if (!value.equals("")) {
-							if (value.equals(Config.AUDIO_START_MUSIC_SERVER_DEFAULT)) {
-								GameServer srv = ((Iceclient) app).getCurrentGameServer();
-								if (srv != null && StringUtils.isNotBlank(srv.getStartMusic()))
-									value = srv.getStartMusic();
-								else
-									value = "";
-							}
-							if (!value.equals("")) {
-								audio.queue(AudioQueue.MUSIC, AudioVideoToolButtons.this, value, 0, 1f);
-							}
+							audio.queue(AudioQueue.MUSIC, AudioVideoToolButtons.this, value, 0, 1f);
 						}
 					}
 				}
-			};
+			});
 			music.addListItem("No start screen music", "");
 			music.addListItem("Server default music", Config.AUDIO_START_MUSIC_SERVER_DEFAULT);
-			for (String r : Music.get(app.getAssetManager()).getMusicResources()) {
+			for (String r : Music.get(ToolKit.get().getApplication().getAssetManager()).getMusicResources()) {
 				String basename = Icelib.getBasename(Icelib.getFilename(r));
 				if (basename.toLowerCase().startsWith("music-")) {
 					basename = basename.substring(6);
@@ -157,87 +161,56 @@ public class AudioVideoToolButtons extends Element {
 				music.addListItem(Icelib.toEnglish(basename, true), r);
 			}
 			adjusting = false;
-			content.addChild(music, "span 2, growx");
+			content.addElement(music, "span 2, growx");
 
 			// Sliders
 			Label l1 = new Label("Master", screen);
-			content.addChild(l1);
-			Slider<Float> masterVolume = new Slider<Float>(screen, Slider.Orientation.HORIZONTAL, true) {
-				@Override
-				public void onChange(Float value) {
-					Config.get().putFloat(SceneConfig.AUDIO_MASTER_VOLUME, value);
-				}
-			};
+			content.addElement(l1);
+			Slider<Float> masterVolume = new Slider<Float>(screen, Orientation.HORIZONTAL);
+			masterVolume.onChanged(evt -> Config.get().putFloat(SceneConfig.AUDIO_MASTER_VOLUME, evt.getNewValue()));
 			masterVolume.setSliderModel(new FloatRangeSliderModel(0, 1,
 					Config.get().getFloat(SceneConfig.AUDIO_MASTER_VOLUME, SceneConfig.AUDIO_MASTER_VOLUME_DEFAULT),
 					0.05f));
 			masterVolume.setLockToStep(true);
-			content.addChild(masterVolume);
+			content.addElement(masterVolume);
 
 			l1 = new Label("Music", screen);
-			content.addChild(l1);
-			Slider<Float> musicVolume = new Slider<Float>(screen, Slider.Orientation.HORIZONTAL, true) {
-				@Override
-				public void onChange(Float value) {
-					Config.get().putFloat(SceneConfig.AUDIO_MUSIC_VOLUME, (Float) value);
-				}
-			};
+			content.addElement(l1);
+			Slider<Float> musicVolume = new Slider<Float>(screen, Orientation.HORIZONTAL);
+			musicVolume.onChanged(evt -> Config.get().putFloat(SceneConfig.AUDIO_MUSIC_VOLUME, evt.getNewValue()));
 			musicVolume.setSliderModel(new FloatRangeSliderModel(0, 1,
 					Config.get().getFloat(SceneConfig.AUDIO_MUSIC_VOLUME, SceneConfig.AUDIO_MUSIC_VOLUME_DEFAULT),
 					0.05f));
 			musicVolume.setLockToStep(true);
-			content.addChild(musicVolume);
+			content.addElement(musicVolume);
 
 			l1 = new Label("UI", screen);
-			content.addChild(l1);
-			Slider<Float> uiVolume = new Slider<Float>(screen, Slider.Orientation.HORIZONTAL, true) {
-				@Override
-				public void onChange(Float value) {
-					Config.get().putFloat(SceneConfig.AUDIO_UI_VOLUME, value);
-				}
-			};
+			content.addElement(l1);
+			Slider<Float> uiVolume = new Slider<Float>(screen, Orientation.HORIZONTAL);
+			uiVolume.onChanged(evt -> Config.get().putFloat(SceneConfig.AUDIO_UI_VOLUME, evt.getNewValue()));
 			uiVolume.setSliderModel(new FloatRangeSliderModel(0, 1,
 					Config.get().getFloat(SceneConfig.AUDIO_UI_VOLUME, SceneConfig.AUDIO_UI_VOLUME_DEFAULT), 0.05f));
 			uiVolume.setLockToStep(true);
-			content.addChild(uiVolume);
+			content.addElement(uiVolume);
 
-			CheckBox mute = new CheckBox(screen) {
-				@Override
-				public void onButtonMouseLeftUp(MouseButtonEvent evt, boolean toggled) {
-					super.onButtonMouseLeftUp(evt, toggled);
-					Config.get().putBoolean(SceneConfig.AUDIO_MUTE, toggled);
-				}
-			};
-			mute.setIsCheckedNoCallback(
-					Config.get().getBoolean(SceneConfig.AUDIO_MUTE, SceneConfig.AUDIO_MUTE_DEFAULT));
-			mute.setLabelText("Mute");
-			content.addChild(mute, "span 2, growx");
+			CheckBox mute = new CheckBox(screen);
+			mute.setChecked(Config.get().getBoolean(SceneConfig.AUDIO_MUTE, SceneConfig.AUDIO_MUTE_DEFAULT));
+			mute.onChange(evt -> Config.get().putBoolean(SceneConfig.AUDIO_MUTE, evt.getNewValue()));
+			mute.setText("Mute");
+			content.addElement(mute, "span 2, growx");
 
-			// Show effect
-			Effect slideIn = new Effect(Effect.EffectType.SlideIn, Effect.EffectEvent.Show, UIConstants.UI_EFFECT_TIME);
-			slideIn.setEffectDirection(Effect.EffectDirection.Top);
-			addEffect(Effect.EffectEvent.Show, slideIn);
-
-			// Hide effect
-			Effect slideOut = new Effect(Effect.EffectType.SlideOut, Effect.EffectEvent.Hide,
-					UIConstants.UI_EFFECT_TIME);
-			slideOut.setEffectDirection(Effect.EffectDirection.Top);
-			addEffect(Effect.EffectEvent.Hide, slideOut);
-
-			// Mini audio reveal button
-			screen.addElement(this);
 			sizeToContent();
-			hide();
+			screen.attachElement(this);
 		}
 
 		@Override
 		protected void onCloseWindow() {
 			super.onCloseWindow();
-			audio.setIsEnabled(true);
+			audio.setEnabled(true);
 		}
 
 		public void setSelectedMusic(String path) {
-			music.setSelectedByValue(path, false);
+			music.setSelectedByValue(path);
 		}
 	}
 }

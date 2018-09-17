@@ -9,6 +9,7 @@ import org.icemoon.Config;
 import org.icescene.IcemoonAppState;
 import org.icescene.IcesceneApp;
 import org.icescene.NodeVisitor;
+import org.icescene.NodeVisitor.VisitResult;
 import org.icescene.configuration.TerrainTemplateConfiguration;
 import org.icescene.entities.AbstractSpawnEntity;
 import org.icescene.entities.EntityLoader;
@@ -158,10 +159,11 @@ public class CreatureSelectorAppState extends IcemoonAppState<GameAppState> {
 		TerrainAppState tas = stateManager.getState(TerrainAppState.class);
 		if (tas != null) {
 			new NodeVisitor(tas.getTerrainGroupNode()).visit(new NodeVisitor.Visit() {
-				public void visit(Spatial node) {
+				public VisitResult visit(Spatial node) {
 					if (node instanceof Geometry) {
 						textureProjector.getTargetGeometryList().add((Geometry) node);
 					}
+					return VisitResult.CONTINUE;
 				}
 			});
 		}

@@ -18,20 +18,21 @@ import org.icescene.HUDMessageAppState;
 import org.icescene.audio.AudioQueue;
 import org.icescene.console.ConsoleAppState;
 import org.icescene.ui.RichTextRenderer;
-import org.iceui.controls.FancyButton;
 
 import com.jme3.app.Application;
 import com.jme3.app.state.AppStateManager;
-import com.jme3.input.event.MouseButtonEvent;
+import com.jme3.font.BitmapFont.Align;
 
 import icemoon.iceloader.ServerAssetManager;
 import icemoon.iceloader.locators.ServerLocator;
-import icetone.controls.lists.Table;
-import icetone.controls.lists.Table.ColumnResizeMode;
-import icetone.controls.lists.Table.SelectionMode;
-import icetone.controls.lists.Table.TableRow;
-import icetone.core.Container;
-import icetone.core.Element;
+import icetone.controls.buttons.PushButton;
+import icetone.controls.table.Table;
+import icetone.controls.table.Table.ColumnResizeMode;
+import icetone.controls.table.Table.SelectionMode;
+import icetone.controls.table.TableRow;
+import icetone.controls.text.XHTMLLabel;
+import icetone.core.BaseElement;
+import icetone.core.StyledContainer;
 import icetone.core.layout.mig.MigLayout;
 
 public class ServerSelectAppState extends AbstractIntroAppState {
@@ -40,10 +41,10 @@ public class ServerSelectAppState extends AbstractIntroAppState {
 	private static ServerListManager listManager;
 	private Table serverTable;
 	private RichTextRenderer browser;
-	private FancyButton addServer;
-	private FancyButton reloadServers;
-	private FancyButton removeServer;
-	private FancyButton connectServer;
+	private PushButton addServer;
+	private PushButton reloadServers;
+	private PushButton removeServer;
+	private PushButton connectServer;
 
 	@Override
 	public void initialize(AppStateManager stateManager, final Application app) {
@@ -65,72 +66,71 @@ public class ServerSelectAppState extends AbstractIntroAppState {
 	}
 
 	protected void createWindowForState() {
-		Element contentArea = contentWindow.getContentArea();
+		BaseElement contentArea = contentWindow.getContentArea();
 		contentArea.removeAllChildren();
 		contentArea.setLayoutManager(
 				new MigLayout(screen, "wrap 2, gap 2, ins 0, fill", "[:300,grow][:400]", "[:300,grow][shrink 0]"));
-		serverTable = new Table(screen) {
-
-			@Override
-			public void onChange() {
-				GameServer selectedGameServer = getSelectedGameServer();
-				Config.get().put(Config.SERVER_SELECT_SERVER, selectedGameServer == null
-						? Config.SERVER_SELECT_SERVER_DEFAULT : selectedGameServer.getName());
-				showServerDetails();
-				loadBackgroundForSelection();
-				AudioAppState aas = app.getStateManager().getState(AudioAppState.class);
-				if (aas != null && Config.get().get(Config.AUDIO_START_MUSIC, Config.AUDIO_START_MUSIC_DEFAULT)
-						.equals(Config.AUDIO_START_MUSIC_SERVER_DEFAULT)) {
-					aas.clearQueuesAndStopAudio(true, AudioQueue.MUSIC);
-					aas.playStartMusic();
-				}
+		serverTable = new Table(screen);
+		serverTable.onChanged(evt -> {
+			GameServer selectedGameServer = getSelectedGameServer();
+			Config.get().put(Config.SERVER_SELECT_SERVER,
+					selectedGameServer == null ? Config.SERVER_SELECT_SERVER_DEFAULT : selectedGameServer.getName());
+			showServerDetails();
+			loadBackgroundForSelection();
+			AudioAppState aas = app.getStateManager().getState(AudioAppState.class);
+			if (aas != null && Config.get().get(Config.AUDIO_START_MUSIC, Config.AUDIO_START_MUSIC_DEFAULT)
+					.equals(Config.AUDIO_START_MUSIC_SERVER_DEFAULT)) {
+				aas.clearQueuesAndStopAudio(true, AudioQueue.MUSIC);
+				aas.playStartMusic();
 			}
-		};
+		});
 		serverTable.setColumnResizeMode(ColumnResizeMode.AUTO_FIRST);
 		serverTable.setHeadersVisible(true);
 		serverTable.setSelectionMode(SelectionMode.ROW);
-		;
 		serverTable.addColumn("Server");
 
 		browser = new RichTextRenderer(screen);
 
-		Container actions = new Container(screen, new MigLayout(screen, "fill", "[][]push[]", "[]"));
+		StyledContainer actions = new StyledContainer(screen, new MigLayout(screen, "fill", "[][]push[]", "[]"));
 
-		addServer = new FancyButton("Add", screen) {
-			@Override
-			public void onButtonMouseLeftUp(MouseButtonEvent evt, boolean toggled) {
+		addServer = new PushButton(screen, "Add") {
+			{
+				setStyleClass("fancy");
 			}
 		};
-		removeServer = new FancyButton("Remove", screen) {
-			@Override
-			public void onButtonMouseLeftUp(MouseButtonEvent evt, boolean toggled) {
+
+		removeServer = new PushButton(screen, "Remove") {
+			{
+				setStyleClass("fancy");
 			}
-
 		};
-		reloadServers = new FancyButton("Reload", screen) {
-			@Override
-			public void onButtonMouseLeftUp(MouseButtonEvent evt, boolean toggled) {
-				listManager.unload();
-				serverTable.removeAllRows();
-				showServerDetails();
-				loadServers();
+
+		reloadServers = new PushButton(screen, "Reload") {
+			{
+				setStyleClass("fancy");
 			}
-
 		};
-		connectServer = new FancyButton("Play", screen) {
-			@Override
-			public void onButtonMouseLeftUp(MouseButtonEvent evt, boolean toggled) {
-				connectToServer();
+		reloadServers.onMouseReleased(evt -> {
+			listManager.unload();
+			serverTable.removeAllRows();
+			showServerDetails();
+			loadServers();
+		});
+
+		connectServer = new PushButton(screen, "Play") {
+			{
+				setStyleClass("fancy");
 			}
-
 		};
-		actions.addChild(addServer);
-		actions.addChild(removeServer);
-		actions.addChild(connectServer);
+		connectServer.onMouseReleased(evt -> connectToServer());
 
-		contentArea.addChild(serverTable, "growx, growy");
-		contentArea.addChild(browser, "growx, growy");
-		contentArea.addChild(actions, "growx, span 2");
+		actions.addElement(addServer);
+		actions.addElement(removeServer);
+		actions.addElement(connectServer);
+
+		contentArea.addElement(serverTable, "growx, growy");
+		contentArea.addElement(browser, "growx, growy");
+		contentArea.addElement(actions, "growx, span 2");
 
 		setAvailable();
 	}
@@ -197,37 +197,35 @@ public class ServerSelectAppState extends AbstractIntroAppState {
 	private void showServerDetails() {
 		GameServer gs = getSelectedGameServer();
 		StringBuilder bui = new StringBuilder();
-		bui.append("<html>");
-		bui.append("<body>");
 		if (gs == null) {
 			bui.append("<p>No server selected.</p");
 		} else {
-			bui.append("<h3>");
+			bui.append("<h5>");
 			bui.append("<a href=\"");
 			bui.append(gs.getUrl());
 			bui.append("\">");
 			bui.append(gs.getName());
 			bui.append("</a>");
-			bui.append("</h3>");
+			bui.append("</h5>");
 			if (StringUtils.isNotBlank(gs.getOwner())) {
-				bui.append("<h5>Owned by ");
-				bui.append(gs.getOwner());
+				bui.append("<h6>Owned by ");
 				if (StringUtils.isNotBlank(gs.getOwnerEmail())) {
-					bui.append(" (<a href=\"mailto:");
+					bui.append("<a href=\"mailto:");
 					bui.append(gs.getOwnerEmail());
 					bui.append("\">");
-					bui.append(gs.getOwnerEmail());
-					bui.append("</a>)");
-				}
-				bui.append("</h5>");
+					bui.append(gs.getOwner());
+					bui.append("</a>");
+				} else
+					bui.append(gs.getOwner());
+				bui.append("</h6>");
 			} else if (StringUtils.isNotBlank(gs.getOwnerEmail())) {
-				bui.append("<h5>Owned by ");
+				bui.append("<h6>Owned by ");
 				bui.append("<a href=\"mailto:");
 				bui.append(gs.getOwnerEmail());
 				bui.append("\">");
 				bui.append(gs.getOwnerEmail());
 				bui.append("</a>");
-				bui.append("</h5>");
+				bui.append("</h6>");
 			}
 			bui.append("<p>");
 			bui.append(gs.getDescription());
@@ -248,10 +246,10 @@ public class ServerSelectAppState extends AbstractIntroAppState {
 			bui.append(gs.getDisplayAddress());
 			bui.append("</div>");
 		}
-		bui.append("</body>");
-		bui.append("</html>");
 		try {
-			browser.setDocument(new ByteArrayInputStream(bui.toString().getBytes("UTF-8")),
+			browser.setDocument(
+					new ByteArrayInputStream(XHTMLLabel.wrapTextInXHTML(bui.toString(), browser.getFontColor(),
+							Align.Left, "/CSS/ServerSelectAppState.css").getBytes("UTF-8")),
 					ServerListManager.SERVER_LIST_URL);
 		} catch (UnsupportedEncodingException e) {
 		}
@@ -277,10 +275,10 @@ public class ServerSelectAppState extends AbstractIntroAppState {
 
 	private void setAvailable() {
 		GameServer gs = getSelectedGameServer();
-		removeServer.setIsEnabled(gs != null && gs.isUserDefined());
-		connectServer.setIsEnabled(gs != null);
+		removeServer.setEnabled(gs != null && gs.isUserDefined());
+		connectServer.setEnabled(gs != null);
 
 		// TODO
-		addServer.setIsEnabled(false);
+		addServer.setEnabled(false);
 	}
 }

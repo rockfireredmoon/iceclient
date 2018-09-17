@@ -34,20 +34,20 @@ import org.icenet.client.GameServer;
 import org.icescene.IcemoonAppState;
 import org.icescene.IcesceneApp;
 import org.icescene.SceneConstants;
+import org.icescene.assets.ExtendedMaterialListKey.Lighting;
 import org.icescene.entities.AbstractLoadableEntity;
 import org.icescene.entities.AbstractSpawnEntity;
 import org.icescene.entities.EntityLoader;
 import org.icescene.environment.EnvironmentLight;
 import org.icescene.environment.EnvironmentPhase;
+import org.icescene.environment.PostProcessAppState;
+import org.icescene.props.AbstractProp;
 import org.icescene.props.EntityFactory;
 import org.icescene.scene.creatures.Biped;
 import org.iceskies.environment.EnvironmentSwitcherAppState;
-import org.iceskies.environment.EnvironmentSwitcherAppState.EnvPriority;
 import org.iceui.IceUI;
-import org.iceui.effects.EffectHelper;
 
 import com.jme3.app.state.AppStateManager;
-import com.jme3.input.event.MouseButtonEvent;
 import com.jme3.math.FastMath;
 import com.jme3.math.Quaternion;
 import com.jme3.math.Vector3f;
@@ -55,10 +55,12 @@ import com.jme3.renderer.Camera;
 import com.jme3.scene.Node;
 import com.jme3.scene.Spatial;
 
-import icetone.controls.buttons.ButtonAdapter;
-import icetone.core.Element;
-import icetone.core.Element.ZPriority;
-import icetone.effects.Effect;
+import icetone.controls.buttons.Button;
+import icetone.core.BaseElement;
+import icetone.core.ZPriority;
+import icetone.core.event.ScreenEvent;
+import icetone.core.event.ScreenEventListener;
+import icetone.core.layout.XYLayout;
 
 public class StartAppState extends IcemoonAppState<IcemoonAppState<?>> {
 
@@ -79,8 +81,8 @@ public class StartAppState extends IcemoonAppState<IcemoonAppState<?>> {
 		 */
 		LOG.info("Creating detail items and appearances");
 
-		Item item = createFakeItem(0, "Knight Chest", "Icon-CC-ClothingWarrior_C.png", EquipType.CHEST, Item.ArmourType.HEAVY,
-				Item.Quality.COMMON);
+		Item item = createFakeItem(0, "Knight Chest", "Icon-CC-ClothingWarrior_C.png", EquipType.CHEST,
+				Item.ArmourType.HEAVY, Item.Quality.COMMON);
 		item.getAppearance().setClothingAsset("Armor-CC-Warrior");
 		DEFAULT_CHESTS.add(item);
 		item = createFakeItem(1, "Rogue Chest", "Icon-CC-ClothingSneak_C.png", EquipType.CHEST, Item.ArmourType.LIGHT,
@@ -95,7 +97,8 @@ public class StartAppState extends IcemoonAppState<IcemoonAppState<?>> {
 				Item.Quality.UNCOMMON);
 		item.getAppearance().setClothingAsset("Armor-CC-Druid");
 		DEFAULT_CHESTS.add(item);
-		item = createFakeItem(4, "Chest", "Icon-CC-Clothing1_C.png", EquipType.CHEST, Item.ArmourType.MEDIUM, Item.Quality.UNCOMMON);
+		item = createFakeItem(4, "Chest", "Icon-CC-Clothing1_C.png", EquipType.CHEST, Item.ArmourType.MEDIUM,
+				Item.Quality.UNCOMMON);
 		item.getAppearance().setClothingAsset(DEFAULT_SET_NAME);
 		DEFAULT_CHESTS.add(item);
 
@@ -117,7 +120,8 @@ public class StartAppState extends IcemoonAppState<IcemoonAppState<?>> {
 				Item.Quality.COMMON);
 		item.getAppearance().setClothingAsset("Armor-CC-Druid");
 		DEFAULT_PANTS.add(item);
-		item = createFakeItem(3, "Pants", "Icon-CC-Clothing1_L.png", EquipType.LEGS, Item.ArmourType.MEDIUM, Item.Quality.COMMON);
+		item = createFakeItem(3, "Pants", "Icon-CC-Clothing1_L.png", EquipType.LEGS, Item.ArmourType.MEDIUM,
+				Item.Quality.COMMON);
 		item.getAppearance().setClothingAsset(DEFAULT_SET_NAME);
 		DEFAULT_PANTS.add(item);
 
@@ -139,25 +143,28 @@ public class StartAppState extends IcemoonAppState<IcemoonAppState<?>> {
 				Item.Quality.COMMON);
 		item.getAppearance().setClothingAsset("Armor-CC-Druid");
 		DEFAULT_BOOTS.add(item);
-		item = createFakeItem(4, "Boots", "Icon-CC-Clothing1_B.png", EquipType.FEET, Item.ArmourType.MEDIUM, Item.Quality.COMMON);
+		item = createFakeItem(4, "Boots", "Icon-CC-Clothing1_B.png", EquipType.FEET, Item.ArmourType.MEDIUM,
+				Item.Quality.COMMON);
 		item.getAppearance().setClothingAsset(DEFAULT_SET_NAME);
 		DEFAULT_BOOTS.add(item);
-		DEFAULT_WEAPONS.put(Profession.KNIGHT, Arrays.asList(
-				createDefaultWeaponAttachment(EquipType.WEAPON_1H_MAIN, "Item-1hSword-Basic3"),
-				createDefaultWeaponAttachment(EquipType.SHIELD, "Item-Shield-Basic3", new Color(0xd4, 0x90, 0x53), new Color(0x6a,
-						0x6a, 0x6a), new Color(0xd4, 0xaa, 0xaa))));
+		DEFAULT_WEAPONS.put(Profession.KNIGHT,
+				Arrays.asList(createDefaultWeaponAttachment(EquipType.WEAPON_1H_MAIN, "Item-1hSword-Basic3"),
+						createDefaultWeaponAttachment(EquipType.SHIELD, "Item-Shield-Basic3",
+								new Color(0xd4, 0x90, 0x53), new Color(0x6a, 0x6a, 0x6a),
+								new Color(0xd4, 0xaa, 0xaa))));
 
 		DEFAULT_WEAPONS.put(Profession.ROGUE, Arrays.asList(
-				createDefaultWeaponAttachment(EquipType.WEAPON_1H_MAIN, "Item-Dagger-Basic6", new Color(0x5a, 0x62, 0x68),
-						new Color(0x87, 0xd4, 0xd4), new Color(0x36, 0x55, 0x55)),
-				createDefaultWeaponAttachment(EquipType.WEAPON_1H_OFF, "Item-Dagger-Basic1", new Color(0x5a, 0x62, 0x68),
-						new Color(0x94, 0x65, 0x3a), new Color(0x94, 0x94, 0x94))));
+				createDefaultWeaponAttachment(EquipType.WEAPON_1H_MAIN, "Item-Dagger-Basic6",
+						new Color(0x5a, 0x62, 0x68), new Color(0x87, 0xd4, 0xd4), new Color(0x36, 0x55, 0x55)),
+				createDefaultWeaponAttachment(EquipType.WEAPON_1H_OFF, "Item-Dagger-Basic1",
+						new Color(0x5a, 0x62, 0x68), new Color(0x94, 0x65, 0x3a), new Color(0x94, 0x94, 0x94))));
 
 		DEFAULT_WEAPONS.put(Profession.MAGE, Arrays.asList(createDefaultWeaponAttachment(EquipType.WEAPON_1H_MAIN,
 				"Item-Wand-Basic1", new Color(0x55, 0x55, 0x55))));
 
-		DEFAULT_WEAPONS.put(Profession.DRUID, Arrays.asList(createDefaultWeaponAttachment(EquipType.WEAPON_1H_MAIN,
-				"Item-Bow-Basic5", new Color(0x7f, 0x42, 0x0b), new Color(0xbf, 0x3c, 0x21), new Color(0x00, 0xd4, 0x0d))));
+		DEFAULT_WEAPONS.put(Profession.DRUID,
+				Arrays.asList(createDefaultWeaponAttachment(EquipType.WEAPON_1H_MAIN, "Item-Bow-Basic5",
+						new Color(0x7f, 0x42, 0x0b), new Color(0xbf, 0x3c, 0x21), new Color(0x00, 0xd4, 0x0d))));
 	}
 	protected NetworkAppState network;
 	protected Persona character;
@@ -169,18 +176,19 @@ public class StartAppState extends IcemoonAppState<IcemoonAppState<?>> {
 	private Camera cam;
 	private MoveableCharacterControl playerControl;
 	private float lastTpf;
-	private ButtonAdapter rotateLeft;
-	private ButtonAdapter rotateRight;
+	private Button rotateLeft;
+	private Button rotateRight;
 	private EntityLoader loader;
 	private List<Item> initialEquipment;
 	// private PointLight point;
 	private Quaternion rotate;
-	private IcesceneApp.AppListener listener;
-	private Element layer;
+	private ScreenEventListener listener;
+	private BaseElement layer;
 	private EntityFactory propFactory;
 	private Spatial backgroundProp;
 	private NetworkListenerAdapter netListener;
 	private float[] oldFrustum;
+	private AbstractProp lightProp;
 
 	public StartAppState() {
 		super(Config.get());
@@ -205,9 +213,10 @@ public class StartAppState extends IcemoonAppState<IcemoonAppState<?>> {
 			}
 		});
 
-		this.app.addListener(listener = new IcesceneApp.AppListener() {
+		this.screen.addScreenListener(listener = new ScreenEventListener() {
+
 			@Override
-			public void reshape(int w, int h) {
+			public void onScreenEvent(ScreenEvent evt) {
 				// StartAppState.this.app.removeBackgroundPicture();
 				// StartAppState.this.app.setBackgroundPicture("Interface/select.jpg");
 				positionRotatorArrows();
@@ -219,7 +228,8 @@ public class StartAppState extends IcemoonAppState<IcemoonAppState<?>> {
 		oldFrustum = IceUI.saveFrustum(cam);
 
 		// Layer for this appstate
-		layer = new Element(screen);
+		layer = new BaseElement(screen);
+		layer.setLayoutManager(new XYLayout());
 		layer.setAsContainerOnly();
 
 		// For loading player model
@@ -236,10 +246,6 @@ public class StartAppState extends IcemoonAppState<IcemoonAppState<?>> {
 		// Start off with character selection
 		stateManager.attach(new CharacterSelectAppState());
 
-		// Add and show layer
-		this.app.getLayers(ZPriority.NORMAL).addChild(layer);
-		new EffectHelper().reveal(layer, Effect.EffectType.FadeIn);
-
 		if (character == null) {
 			// Queue the loading screen to hide, we have no creature to load so
 			// everything should be more or less ready
@@ -250,28 +256,100 @@ public class StartAppState extends IcemoonAppState<IcemoonAppState<?>> {
 
 		try {
 			EnvironmentLight el = new EnvironmentLight(app.getCamera(), rootNode, prefs);
-			EnvironmentSwitcherAppState es = new EnvironmentSwitcherAppState(this.app.getPreferences(), "Default", el, rootNode,
-					new Node("DummyWeather"));
+
+			PostProcessAppState ppas = new PostProcessAppState(prefs, el);
+			stateManager.attach(ppas);
+
+			EnvironmentSwitcherAppState es = new EnvironmentSwitcherAppState(this.app.getPreferences(), "Default", el,
+					rootNode, new Node("DummyWeather")) {
+
+				@Override
+				protected void postInitialize() {
+					/*
+					 * Wait until ready so the post processor has chance to get
+					 * going too
+					 */
+
+					String env = "Default";
+					GameServer srv = ((Iceclient) app).getCurrentGameServer();
+					if (srv != null && StringUtils.isNotBlank(srv.getLobbyEnvironment()))
+						env = srv.getLobbyEnvironment();
+
+					setEnvironment(EnvPriority.USER, env);
+					setPhase(EnvironmentPhase.DAY);
+				}
+
+			};
 			es.setFollowCamera(true);
 			es.setAudioEnabled(false);
 			stateManager.attach(es);
-			
-			String env = "Default";
-			GameServer srv = ((Iceclient)app).getCurrentGameServer();
-			if(srv != null && StringUtils.isNotBlank(srv.getLobbyEnvironment())) 
-				env = srv.getLobbyEnvironment();
-			
-			es.setEnvironment(EnvPriority.USER, env);
-			es.setPhase(EnvironmentPhase.DAY);
 			StartAppState sas = stateManager.getState(StartAppState.class);
 			backgroundProp = sas.getPropFactory().getProp("Prop-CharSelect_BG#Prop-CharSelect_BG").getSpatial();
 			backgroundProp.setLocalScale(0.64999998f);
 			backgroundProp.setLocalTranslation(12, 0, -2);
+
+			// Prop-LightSmall.csm.xml
+			// Prop-SpotLightSmall.csm.xml
+
+			// lightProp = sas.getPropFactory().getProp("Prop-LightMedium");
+			// rootNode.attachChild(lightProp.getSpatial());
+			// lightProp.getSpatial().move(17, 8, 2);
+
+			// lightProp = sas.getPropFactory().getProp("Prop-SpotLightMedium");
+			// rootNode.attachChild(lightProp.getSpatial());
+			// lightProp.setTranslation(new Vector3f(17,12, 5));
+			// lightProp.setRotation(new Quaternion(new float[] { 45 *
+			// FastMath.DEG_TO_RAD, 45 * FastMath.DEG_TO_RAD,0 }));
+			// MouseManager mm = new MouseManager(rootNode, app.getAlarm());
+			// lightProp.getSpatial().addControl(new
+			// ObjectManipulatorControl(rootNode, mm, app));
+			// lightProp.getSpatial().move(17,12, 0);
+
 			// backgroundProp.setQueueBucket(Bucket.Transparent);
 			rootNode.attachChild(backgroundProp);
 		} catch (Exception ex) {
 			LOG.log(Level.SEVERE, "Failed to load background.", ex);
 		}
+
+		if (rotateLeft == null) {
+			rotateLeft = new Button(screen) {
+				{
+					setStyleClass("rotate-button rotate-left");
+				}
+			};
+			rotateLeft.onMousePressed(evt -> {
+				if (playerControl != null) {
+					playerControl.move(MoveableCharacterControl.Type.ROTATE_RIGHT, true, lastTpf);
+				}
+			});
+			rotateLeft.onMouseReleased(evt -> {
+				if (playerControl != null) {
+					playerControl.move(MoveableCharacterControl.Type.ROTATE_RIGHT, false, lastTpf);
+				}
+			});
+			rotateRight = new Button(screen) {
+				{
+					setStyleClass("rotate-button rotate-right");
+				}
+			};
+			rotateRight.onMousePressed(evt -> {
+				if (playerControl != null) {
+					playerControl.move(MoveableCharacterControl.Type.ROTATE_LEFT, true, lastTpf);
+				}
+			});
+			rotateRight.onMouseReleased(evt -> {
+
+				if (playerControl != null) {
+					playerControl.move(MoveableCharacterControl.Type.ROTATE_LEFT, false, lastTpf);
+				}
+			});
+
+			layer.addElement(rotateLeft);
+			layer.addElement(rotateRight);
+		}
+
+		// Add and show layer
+		this.app.getLayers(ZPriority.NORMAL).showElement(layer);
 
 		return this;
 	}
@@ -311,7 +389,7 @@ public class StartAppState extends IcemoonAppState<IcemoonAppState<?>> {
 	@Override
 	public void onCleanup() {
 		stateManager.detach(stateManager.getState(EnvironmentSwitcherAppState.class));
-		new EffectHelper().destroy(layer, Effect.EffectType.FadeOut);
+		layer.destroy();
 		if (creatureEntity != null) {
 			rootNode.detachChild(creatureEntity.getSpatial());
 		}
@@ -320,6 +398,8 @@ public class StartAppState extends IcemoonAppState<IcemoonAppState<?>> {
 		if (lobby != null) {
 			stateManager.detach(lobby);
 		}
+		if (lightProp != null)
+			lightProp.getSpatial().removeFromParent();
 		if (backgroundProp != null) {
 			rootNode.detachChild(backgroundProp);
 		}
@@ -329,8 +409,8 @@ public class StartAppState extends IcemoonAppState<IcemoonAppState<?>> {
 	}
 
 	@Override
-	public void stateDetached(AppStateManager stateManager) {
-		this.app.removeListener(listener);
+	protected void onStateDetached() {
+		screen.removeScreenListener(listener);
 		loader.close();
 	}
 
@@ -361,6 +441,7 @@ public class StartAppState extends IcemoonAppState<IcemoonAppState<?>> {
 				} else {
 					creatureEntity.getSpatial().rotate(rotate);
 				}
+				creatureEntity.setFixedLighting(Lighting.UNLIT);
 
 				// creatureEntity.getSpatial().move(4.25f, -7.5f, -25);
 				creatureEntity.getSpatial().move(17, 0, 0);
@@ -396,7 +477,8 @@ public class StartAppState extends IcemoonAppState<IcemoonAppState<?>> {
 		return initialEquipment;
 	}
 
-	private static Item createFakeItem(long id, String name, String icon, EquipType eq, Item.ArmourType type, Item.Quality quality) {
+	private static Item createFakeItem(long id, String name, String icon, EquipType eq, Item.ArmourType type,
+			Item.Quality quality) {
 		Item item = new Item();
 		item.setEntityId(id);
 		item.setDisplayName(name);
@@ -417,8 +499,8 @@ public class StartAppState extends IcemoonAppState<IcemoonAppState<?>> {
 		float z = height / 600.0f * 25.0f;
 		cam.setLocation(new Vector3f(8.5f, 6.8000002f, z + 13.5f));
 		cam.setRotation(new Quaternion(0, 1, 0, 0));
-		cam.setFrustumPerspective((33.5f * FastMath.PI / 180f) * FastMath.RAD_TO_DEG, (float) cam.getWidth() / cam.getHeight(),
-				0.1f, SceneConstants.WORLD_FRUSTUM);
+		cam.setFrustumPerspective((33.5f * FastMath.PI / 180f) * FastMath.RAD_TO_DEG,
+				(float) cam.getWidth() / cam.getHeight(), 0.1f, SceneConstants.WORLD_FRUSTUM);
 	}
 
 	private void positionRotatorArrows() {
@@ -426,22 +508,23 @@ public class StartAppState extends IcemoonAppState<IcemoonAppState<?>> {
 			Vector3f loc = creatureEntity.getSpatial().getWorldTranslation().clone();
 			loc.x -= (creatureEntity.getBoundingBox().getXExtent());
 			Vector3f screenCoordinates = app.getCamera().getScreenCoordinates(loc);
-			rotateLeft.setPosition(screenCoordinates.x, screen.getHeight() -screenCoordinates.y - 30);
+			rotateLeft.setPosition(screenCoordinates.x, screen.getHeight() - screenCoordinates.y - 30);
 			loc = creatureEntity.getSpatial().getWorldTranslation().clone();
 			loc.x += (creatureEntity.getBoundingBox().getXExtent());
 			screenCoordinates = app.getCamera().getScreenCoordinates(loc);
-			rotateRight.setPosition(screenCoordinates.x - rotateRight.getWidth(), screen.getHeight() - screenCoordinates.y - 30);
-			if (!rotateLeft.getIsVisible()) {
-				rotateLeft.showWithEffect();
-				rotateRight.showWithEffect();
+			rotateRight.setPosition(screenCoordinates.x - rotateRight.getWidth(),
+					screen.getHeight() - screenCoordinates.y - 30);
+			if (!rotateLeft.isVisible()) {
+				rotateLeft.show();
+				rotateRight.show();
 			}
 		}
 	}
 
 	private static Item createDefaultWeaponAttachment(EquipType equipType, String asset, RGB... colors) {
 		Item attachment = new Item();
-		attachment.setAppearance(new ItemAppearance().setAttachments(new AttachmentItem(new EntityKey(asset), null, Arrays
-				.asList(colors))));
+		attachment.setAppearance(new ItemAppearance()
+				.setAttachments(new AttachmentItem(new EntityKey(asset), null, Arrays.asList(colors))));
 		attachment.setEquipType(equipType);
 		return attachment;
 	}
@@ -454,10 +537,15 @@ public class StartAppState extends IcemoonAppState<IcemoonAppState<?>> {
 			public Void call() throws Exception {
 				// Load item appearance from network
 				for (Map.Entry<Slot, Long> item : ((Persona) creatureEntity.getCreature()).getEquipment().entrySet()) {
-					Item gi = network.getClient().getItem(item.getValue());
-					ItemAppearance app = gi.getAppearance();
-					if (app != null) {
-						((Biped) creatureEntity).setAppearance(item.getKey(), app);
+					try {
+						Item gi = network.getClient().getItem(item.getValue());
+						ItemAppearance app = gi.getAppearance();
+						if (app != null) {
+							((Biped) creatureEntity).setAppearance(item.getKey(), app);
+						}
+					} catch (IllegalArgumentException iae) {
+						LOG.severe(
+								String.format("Failed to set appearance for %s. %s", item.getKey(), iae.getMessage()));
 					}
 				}
 				return null;
@@ -468,54 +556,13 @@ public class StartAppState extends IcemoonAppState<IcemoonAppState<?>> {
 			public Void call() throws Exception {
 
 				LOG.info("Adding creature controls");
-				creatureEntity.getSpatial().addControl(playerControl = new MoveableCharacterControl(null, null, creatureEntity));
+				creatureEntity.getSpatial()
+						.addControl(playerControl = new MoveableCharacterControl(null, null, creatureEntity));
 				// creatureEntity.getSpatial().addControl(new
 				// PlayerAnimControl(app, creatureEntity));
 				creatureEntity.getSpatial().addControl(new PlayerRotatingControl(creatureEntity));
 				// creatureEntity.getSpatial().getControl(PlayerAnimControl.class)
 				// .setDefaultAnim(AnimationSequence.get(SceneConstants.ANIM_IDLE));
-
-				if (rotateLeft == null) {
-					rotateLeft = new ButtonAdapter(screen, screen.getStyle("RotateLeftButton").getVector2f("defaultSize")) {
-						@Override
-						public void onButtonMouseLeftDown(MouseButtonEvent evt, boolean toggled) {
-							if (playerControl != null) {
-								playerControl.move(MoveableCharacterControl.Type.ROTATE_RIGHT, true, lastTpf);
-							}
-						}
-
-						@Override
-						public void onButtonMouseLeftUp(MouseButtonEvent evt, boolean toggled) {
-							if (playerControl != null) {
-								playerControl.move(MoveableCharacterControl.Type.ROTATE_RIGHT, false, lastTpf);
-							}
-						}
-					};
-					rotateLeft.setStyles("RotateLeftButton");
-					rotateRight = new ButtonAdapter(screen, screen.getStyle("RotateRightButton").getVector2f("defaultSize")) {
-						@Override
-						public void onButtonMouseLeftDown(MouseButtonEvent evt, boolean toggled) {
-							if (playerControl != null) {
-								playerControl.move(MoveableCharacterControl.Type.ROTATE_LEFT, true, lastTpf);
-							}
-						}
-
-						@Override
-						public void onButtonMouseLeftUp(MouseButtonEvent evt, boolean toggled) {
-
-							if (playerControl != null) {
-								playerControl.move(MoveableCharacterControl.Type.ROTATE_LEFT, false, lastTpf);
-							}
-						}
-					};
-					rotateRight.setStyles("RotateRightButton");
-
-					rotateLeft.hide();
-					rotateRight.hide();
-
-					layer.addChild(rotateLeft);
-					layer.addChild(rotateRight);
-				}
 
 				positionRotatorArrows();
 				LoadScreenAppState.queueHide(app);

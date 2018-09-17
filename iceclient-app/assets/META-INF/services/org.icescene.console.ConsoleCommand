@@ -1,0 +1,11 @@
+org.icemoon.game.console.commands.Channel
+org.icemoon.game.console.commands.CopyPos
+org.icemoon.game.console.commands.Debug
+org.icemoon.game.console.commands.Emote
+org.icemoon.game.console.commands.Grove
+org.icemoon.game.console.commands.IGF
+org.icemoon.game.console.commands.ResetTools
+org.icemoon.game.console.commands.SceneryBrowser
+org.icemoon.game.console.commands.Speed
+org.icemoon.game.console.commands.ToggleBuilding
+org.icemoon.game.console.commands.Warp

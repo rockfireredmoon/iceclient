@@ -1,25 +1,25 @@
 package org.icemoon.start;
 
-import java.util.concurrent.Callable;
-import java.util.concurrent.RejectedExecutionException;
 import java.util.logging.Logger;
 
 import org.icelib.Persona;
 import org.icemoon.Iceclient;
 import org.icemoon.network.NetworkAppState;
 import org.icescene.scene.creatures.Biped;
-import org.iceui.UIConstants;
-import org.iceui.controls.XScreen;
-import org.iceui.effects.EffectHelper;
 
 import com.jme3.app.Application;
 import com.jme3.app.state.AbstractAppState;
 import com.jme3.app.state.AppStateManager;
 
-import icetone.core.Container;
+import icetone.controls.extras.Meter;
+import icetone.core.BaseElement;
+import icetone.core.Layout;
+import icetone.core.Orientation;
+import icetone.core.BaseScreen;
+import icetone.core.StyledContainer;
 import icetone.core.Element;
-import icetone.core.Element.ZPriority;
-import icetone.core.layout.LayoutManager;
+import icetone.core.ZPriority;
+import icetone.core.layout.XYLayout;
 import icetone.core.layout.mig.MigLayout;
 
 public class AbstractLobbyAppState extends AbstractAppState {
@@ -29,16 +29,38 @@ public class AbstractLobbyAppState extends AbstractAppState {
 	protected StartAppState start;
 	protected Persona character;
 	protected Biped creatureSpatial;
-	protected XScreen screen;
-	protected Element layer;
-	protected EffectHelper effectHelper = new EffectHelper();
+	protected BaseScreen screen;
+	protected BaseElement layer;
 	protected AppStateManager stateManager;
 	protected NetworkAppState network;
+	protected StyledContainer meterContainer;
 
 	protected void onCleanup() {
 	}
 
 	protected void onInitialize() {
+	}
+
+	protected void setStage(int stage) {
+		Meter meter = new Meter(screen, Orientation.HORIZONTAL) {
+			{
+				setStyleClass("creation-progress");
+			}
+
+			@Override
+			protected String getValueString(int value) {
+				return "Step " + value;
+			}
+		};
+		meter.setShowValue(true);
+		meter.setMinValue(1);
+		meter.setMaxValue(5);
+		meter.setCurrentValue(stage + 1);
+		meterContainer = new StyledContainer(screen,
+				new MigLayout(screen, "fill", ":" + StartAppState.SIDEBAR_WIDTH + ":[grow]", "push[]:24:"));
+		meterContainer.setDestroyOnHide(true);
+		meterContainer.addElement(meter, "ax 50%");
+		app.getLayers(ZPriority.LAYERS).addElement(meterContainer);
 	}
 
 	@Override
@@ -55,34 +77,27 @@ public class AbstractLobbyAppState extends AbstractAppState {
 		creatureSpatial = start.getSpatial();
 
 		// Layer
-		layer = new Container(screen);
-		layer.setLayoutManager(createLayerLayout());
-		this.app.getLayers(ZPriority.LAYERS).addChild(layer);
-		
+		layer = new Element(screen) {
+			{
+				setStyleClass("lobby-layer");
+			}
+		};
+		layer.setDestroyOnHide(true);
+		layer.setLayoutManager(new XYLayout());
 
 		onInitialize();
+		this.app.getLayers(ZPriority.LAYERS).showElement(layer);
 	}
 
 	@Override
 	public final void cleanup() {
 		super.cleanup();
 		onCleanup();
-		try {
-			app.getAlarm().timed(new Callable<Void>() {
-				@Override
-				public Void call() throws Exception {
-					app.getLayers(ZPriority.LAYERS).removeChild(layer);
-					return null;
-				}
-			}, UIConstants.UI_EFFECT_TIME + 0.1f);
-		} catch (RejectedExecutionException ree) {
-			// Happens on shutdown
-			app.getLayers(ZPriority.LAYERS).removeChild(layer);
+		layer.hide();
+		if (meterContainer != null) {
+			meterContainer.hide();
 		}
 
 	}
 
-	protected LayoutManager createLayerLayout() {
-		return new MigLayout(screen, "fill", "[" + StartAppState.SIDEBAR_WIDTH + "!, grow, fill]push", "[grow, fill]");
-	}
 }

@@ -13,23 +13,21 @@ import org.icescene.tools.Tool;
 import org.icescene.tools.ToolCategory;
 import org.icescene.tools.ToolDroppable;
 import org.icescene.tools.ToolManager;
-import org.iceui.HPosition;
-import org.iceui.VPosition;
 import org.iceui.controls.ElementStyle;
-import org.iceui.controls.FancyPersistentWindow;
-import org.iceui.controls.FancyWindow;
-import org.iceui.controls.SaveType;
 
 import com.jme3.app.state.AppStateManager;
 import com.jme3.font.BitmapFont;
+import com.jme3.font.BitmapFont.Align;
+import com.jme3.font.BitmapFont.VAlign;
 import com.jme3.input.event.MouseButtonEvent;
-import com.jme3.math.Vector2f;
 
 import icetone.controls.text.Label;
-import icetone.core.Element;
-import icetone.core.ElementManager;
+import icetone.core.BaseElement;
+import icetone.core.BaseScreen;
+import icetone.core.Size;
 import icetone.core.layout.mig.MigLayout;
-import icetone.core.utils.UIDUtil;
+import icetone.extras.windows.PersistentWindow;
+import icetone.extras.windows.SaveType;
 
 public class ToolBoxAppState extends IcemoonAppState<HUDAppState> {
 
@@ -43,9 +41,9 @@ public class ToolBoxAppState extends IcemoonAppState<HUDAppState> {
 	}
 
 	private static final String TOOLBOX_TOOLS = "ToolBoxTools";
-	private FancyPersistentWindow toolBoxWindow;
+	private PersistentWindow toolBoxWindow;
 	private ToolManager toolManager;
-	private Element contentArea;
+	private BaseElement contentArea;
 
 	public ToolBoxAppState() {
 		super(Config.get());
@@ -58,14 +56,13 @@ public class ToolBoxAppState extends IcemoonAppState<HUDAppState> {
 
 	@Override
 	protected void postInitialize() {
-		toolBoxWindow = (FancyPersistentWindow) screen.getElementById(TOOLBOX_TOOLS);
+		toolBoxWindow = (PersistentWindow) screen.getElementByStyleId(TOOLBOX_TOOLS);
 		if (toolBoxWindow != null) {
 			// In case the special effects have not finished yet
 			toolBoxWindow.hide();
 		}
-		toolBoxWindow = new FancyPersistentWindow(screen, TOOLBOX_TOOLS, screen.getStyle("Common").getInt("defaultWindowOffset"),
-				VPosition.MIDDLE, HPosition.CENTER, new Vector2f(400, 400), FancyWindow.Size.SMALL, true, SaveType.POSITION,
-				Config.get()) {
+		toolBoxWindow = new PersistentWindow(screen, TOOLBOX_TOOLS, VAlign.Center, Align.Center, new Size(400, 400),
+				true, SaveType.POSITION, Config.get()) {
 			@Override
 			protected void onCloseWindow() {
 				super.onCloseWindow();
@@ -73,8 +70,8 @@ public class ToolBoxAppState extends IcemoonAppState<HUDAppState> {
 			}
 		};
 		toolBoxWindow.setWindowTitle("Tool Box");
-		toolBoxWindow.setIsMovable(true);
-		toolBoxWindow.setIsResizable(false);
+		toolBoxWindow.setMovable(true);
+		toolBoxWindow.setResizable(false);
 
 		contentArea = toolBoxWindow.getContentArea();
 		contentArea.setLayoutManager(new MigLayout(screen, "wrap 1"));
@@ -82,10 +79,9 @@ public class ToolBoxAppState extends IcemoonAppState<HUDAppState> {
 
 		// Show with an effect and sound
 		toolBoxWindow.setDestroyOnHide(true);
-		toolBoxWindow.pack(false);
+		toolBoxWindow.sizeToContent();
 		screen.addElement(toolBoxWindow);
-		toolBoxWindow.hide();
-		toolBoxWindow.showWindow();
+		toolBoxWindow.show();
 
 	}
 
@@ -95,12 +91,21 @@ public class ToolBoxAppState extends IcemoonAppState<HUDAppState> {
 
 	@Override
 	protected void onCleanup() {
-		toolBoxWindow.hideWindow();
+		toolBoxWindow.hide();
 	}
 
 	private ToolDraggable createDraggable(final DragContext dragContext, final Tool tool) {
 		return new ToolDraggable(dragContext, screen, tool) {
 			protected boolean rebuildThisToolBox;
+
+			{
+				onMouseReleased(evt -> {
+					if (rebuildThisToolBox) {
+						rebuildTools();
+						rebuildThisToolBox = false;
+					}
+				});
+			}
 
 			@Override
 			protected boolean doOnClick(MouseButtonEvent evt) {
@@ -108,7 +113,7 @@ public class ToolBoxAppState extends IcemoonAppState<HUDAppState> {
 			}
 
 			@Override
-			protected boolean doOnDragEnd(MouseButtonEvent mbe, Element elmnt) {
+			protected boolean doOnDragEnd(MouseButtonEvent mbe, BaseElement elmnt) {
 				if (elmnt instanceof ToolDroppable) {
 					ToolDroppable toolDroppable = (ToolDroppable) elmnt;
 					final Tool existingTool = toolDroppable.getTool();
@@ -122,16 +127,6 @@ public class ToolBoxAppState extends IcemoonAppState<HUDAppState> {
 				}
 				return false;
 			}
-
-			@Override
-			public void onMouseLeftReleased(MouseButtonEvent evt) {
-				super.onMouseLeftReleased(evt);
-				if (rebuildThisToolBox) {
-					rebuildTools();
-					rebuildThisToolBox = false;
-
-				}
-			}
 		};
 	}
 
@@ -144,32 +139,32 @@ public class ToolBoxAppState extends IcemoonAppState<HUDAppState> {
 		for (ToolCategory cat : categoryTools.keySet()) {
 			Label l = new Label(cat.getName(), screen);
 			l.setToolTipText(cat.getHelp());
-			ElementStyle.medium(screen, l, true, false);
-			contentArea.addChild(l);
+			ElementStyle.medium(l, true, false);
+			contentArea.addElement(l);
 
-			Element tools = new Element(screen);
+			BaseElement tools = new BaseElement(screen);
 			tools.setLayoutManager(new MigLayout(screen, "wrap 10"));
 			for (final Tool tool : categoryTools.get(cat)) {
 				// Only allow trashable tools to be added (or they wont be able
 				// to be removed again)
 				if (tool.isTrashable()) {
-					tools.addChild(createDraggable(dragContext, tool));
+					tools.addElement(createDraggable(dragContext, tool));
 				}
 			}
 
-			contentArea.addChild(tools);
+			contentArea.addElement(tools);
 		}
 
 		Label l = new Label("Drag tools from here to the toolbars", screen);
 		l.setTextAlign(BitmapFont.Align.Center);
-		contentArea.addChild(l, "growx");
+		contentArea.addElement(l, "growx");
 	}
 
 	abstract class ToolDraggable extends AbstractDraggable {
 
-		public ToolDraggable(DragContext dragContext, ElementManager screen, Tool tool) {
-			super(dragContext, screen, UIDUtil.getUID(), screen.getStyle("OptionButton").getVector2f("defaultSize"),
-					screen.getStyle("OptionButton").getVector4f("resizeBorders"), tool.getIcon(), null);
+		public ToolDraggable(DragContext dragContext, BaseScreen screen, Tool tool) {
+			super(dragContext, screen, tool.getIcon(), null);
+			addStyleClass("option-tool");
 			setToolTipText(tool.getHelp());
 		}
 	}

@@ -20,9 +20,9 @@ import org.iceui.UIConstants;
 
 import com.jme3.app.state.AppStateManager;
 
-import icetone.core.Container;
-import icetone.core.Element;
-import icetone.core.Element.ZPriority;
+import icetone.core.BaseElement;
+import icetone.core.StyledContainer;
+import icetone.core.ZPriority;
 import icetone.core.layout.mig.MigLayout;
 
 public class ActionBarsAppState extends IcemoonAppState<GamePlayAppState> {
@@ -56,7 +56,7 @@ public class ActionBarsAppState extends IcemoonAppState<GamePlayAppState> {
 	private AbstractToolArea mainToolArea;
 	private ToolManager toolManager;
 	private final HudType hudType;
-	private Element mainToolsLayer;
+	private BaseElement mainToolsLayer;
 
 	public ActionBarsAppState(Preferences prefs, HudType hudType) {
 		super(prefs);
@@ -82,12 +82,9 @@ public class ActionBarsAppState extends IcemoonAppState<GamePlayAppState> {
 
 			@Override
 			protected void positionToolBox(ToolBox toolBox, String toolBoxName, ToolPanel toolPanel) {
-
-				if (toolBox.getStyle().equals(ToolBox.Style.Tools)) {
+				if (toolBox.getStyle() == null || toolBox.getStyle().startsWith("quickbar")) {
 					super.positionToolBox(toolBox, toolBoxName, toolPanel);
 				} else {
-					toolPanel.setPosition(screen.getStyle(toolBox.getStyle().getWindowStyleName()).getVector2f("defaultPosition"));
-					toolPanel.setDimensions(screen.getStyle(toolBox.getStyle().getWindowStyleName()).getVector2f("defaultSize"));
 					mainToolArea.addToolBar(toolPanel);
 					if (toolBox.isVisible()) {
 						toolPanel.show();
@@ -98,27 +95,26 @@ public class ActionBarsAppState extends IcemoonAppState<GamePlayAppState> {
 			}
 
 		};
-		mainToolsLayer = new Container(screen);
+		mainToolsLayer = new StyledContainer(screen);
 		mainToolsLayer.setLayoutManager(new MigLayout(screen, "ins 0, gap 0", "push[]push", "push[]"));
 
 		// If there is an options or primary abilities toolbar, then show the
 		// main toolbar
 		final List<ToolBox> toolBoxes = toolManager.getToolBoxes(hudType);
 		for (ToolBox t : toolBoxes) {
-			if (t.getStyle().equals(ToolBox.Style.Options) || t.getStyle().equals(ToolBox.Style.PrimaryAbilities) || t.getStyle().equals(ToolBox.Style.BuildTools)) {
+			if (t.getStyle() != null) {
 				mainToolArea = hudType.createToolArea(toolManager, screen);
-				mainToolsLayer.addChild(mainToolArea);
+				mainToolsLayer.addElement(mainToolArea);
 				break;
 			}
 		}
 
 		toolLayer.init();
-		
 
-		app.getLayers(ZPriority.MENU).addChild(mainToolsLayer);
-		app.getLayers(ZPriority.MENU).addChild(toolLayer);
+		app.getLayers(ZPriority.MENU).addElement(mainToolsLayer);
+		app.getLayers(ZPriority.MENU).addElement(toolLayer);
 
-//		mainToolsLayer.bringToFront();
+		// mainToolsLayer.bringToFront();
 	}
 
 	@Override
@@ -126,20 +122,20 @@ public class ActionBarsAppState extends IcemoonAppState<GamePlayAppState> {
 		toolLayer.close();
 		if (mainToolArea != null) {
 			mainToolArea.destroy();
-			mainToolArea.hideWithEffect();
+			mainToolArea.hide();
 		}
 		try {
 			app.getAlarm().timed(new Callable<Void>() {
 				public Void call() throws Exception {
-					app.getLayers(ZPriority.MENU).removeChild(toolLayer);
-					app.getLayers(ZPriority.MENU).removeChild(mainToolsLayer);
+					app.getLayers(ZPriority.MENU).removeElement(toolLayer);
+					app.getLayers(ZPriority.MENU).removeElement(mainToolsLayer);
 					return null;
 				}
 			}, UIConstants.UI_EFFECT_TIME + 0.1f);
 		} catch (RejectedExecutionException ree) {
 			// Happens on shutdown
-			app.getLayers(ZPriority.MENU).removeChild(toolLayer);
-			app.getLayers(ZPriority.MENU).removeChild(mainToolsLayer);
+			app.getLayers(ZPriority.MENU).removeElement(toolLayer);
+			app.getLayers(ZPriority.MENU).removeElement(mainToolsLayer);
 		}
 
 	}

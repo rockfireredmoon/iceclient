@@ -6,13 +6,14 @@ import org.icescene.propertyediting.Property;
 import org.icescene.props.PropUserDataBuilder;
 import org.icescene.props.XMLProp;
 import org.iceui.IceUI;
-import org.iceui.controls.UIUtil;
 
 import com.jme3.light.Light;
 import com.jme3.math.ColorRGBA;
 import com.jme3.math.Vector3f;
 import com.jme3.renderer.queue.RenderQueue.ShadowMode;
 import com.jme3.scene.Geometry;
+
+import icetone.extras.util.ExtrasUtil;
 
 public class AbstractLightProp<T extends Light> extends XMLProp {
 	public static final String ATTR_COLOR = "color";
@@ -29,7 +30,7 @@ public class AbstractLightProp<T extends Light> extends XMLProp {
 	protected void updateFromVariables() {
 		// Update the prop based on the asset name variables
 		if (sceneryItem.getVariables().containsKey(VAR_COLOR)) {
-			setColor(UIUtil.fromColorString(sceneryItem.getVariables().get(VAR_COLOR)));
+			setColor(ExtrasUtil.fromColorString(sceneryItem.getVariables().get(VAR_COLOR)));
 		}
 	}
 

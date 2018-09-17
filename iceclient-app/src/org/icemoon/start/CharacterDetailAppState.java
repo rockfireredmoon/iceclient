@@ -4,6 +4,7 @@ import java.util.Map;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
+import org.icelib.AppInfo;
 import org.icelib.Appearance;
 import org.icelib.RGB;
 import org.icemoon.network.NetworkAppState;
@@ -14,167 +15,209 @@ import org.icescene.configuration.creatures.Skin;
 import org.icescene.entities.AbstractCreatureEntity;
 import org.iceui.IceUI;
 import org.iceui.controls.ElementStyle;
-import org.iceui.controls.FancyButton;
-import org.iceui.controls.FancyPositionableWindow;
-import org.iceui.controls.FancyWindow.Size;
-import org.iceui.controls.color.ColorButton;
-import org.iceui.controls.color.XColorSelector;
 
 import com.jme3.font.BitmapFont;
-import com.jme3.input.event.MouseButtonEvent;
 import com.jme3.math.ColorRGBA;
-import com.jme3.math.Vector2f;
 
+import icetone.controls.buttons.PushButton;
+import icetone.controls.containers.Frame;
 import icetone.controls.lists.FloatRangeSliderModel;
 import icetone.controls.lists.Slider;
 import icetone.controls.text.Label;
-import icetone.core.Container;
-import icetone.core.Element;
-import icetone.core.Element.Orientation;
+import icetone.core.BaseElement;
+import icetone.core.Orientation;
+import icetone.core.StyledContainer;
+import icetone.core.layout.Border;
 import icetone.core.layout.BorderLayout;
-import icetone.core.layout.LUtil;
 import icetone.core.layout.mig.MigLayout;
-import icetone.effects.Effect;
+import icetone.extras.chooser.ColorButton;
+import icetone.extras.chooser.ColorSelector;
 
 public class CharacterDetailAppState extends AbstractLobbyAppState {
 
 	private final static Logger LOG = Logger.getLogger(CharacterDetailAppState.class.getName());
-	private FancyPositionableWindow panel;
+	private Frame panel;
 	private ColorButton showingDialog;
 
 	@Override
 	public void onCleanup() {
 		hideChooserDialog();
-		effectHelper.destroy(panel, Effect.EffectType.SlideOut, Effect.EffectDirection.Top);
 	}
 
 	@Override
 	public void onInitialize() {
 		// Window
-		float ins = 8;
-		panel = new FancyPositionableWindow(screen, "CharacterDetail", new Vector2f(ins, ins), LUtil.LAYOUT_SIZE,
-				Size.LARGE, false);
-		Element content = panel.getContentArea();
+		panel = new Frame(screen, "CharacterDetail", null, null, false) {
+			{
+				setStyleClass("large cc lobby-frame");
+			}
+		};
+		BaseElement content = panel.getContentArea();
 		panel.setWindowTitle("Character Creation");
 		content.setLayoutManager(new MigLayout(screen, "wrap 1", "[fill, grow]", "[][][][fill, grow][]"));
-		panel.setIsMovable(false);
-		panel.setIsResizable(false);
+		panel.setMovable(false);
+		panel.setResizable(false);
+		panel.setDestroyOnHide(true);
 
 		// Gender
 		Label l1 = new Label(screen);
 		l1.setText("Detail");
-		ElementStyle.medium(screen, l1, true, false);
+		ElementStyle.medium(l1, true, false);
 		l1.setTextAlign(BitmapFont.Align.Center);
-		content.addChild(l1, "growx");
+		content.addElement(l1, "growx");
 
 		// Colours area
-		Container coloursArea = new Container(screen);
+		StyledContainer coloursArea = new StyledContainer(screen);
 		coloursArea.setLayoutManager(new MigLayout(screen, "ins 0, wrap 1", "[grow, fill]", "[][fill, grow]"));
 
 		l1 = new Label(screen);
 		l1.setText("Main");
-		ElementStyle.medium(screen, l1);
+		ElementStyle.medium(l1);
 		l1.setTextAlign(BitmapFont.Align.Center);
-		coloursArea.addChild(l1);
+		coloursArea.addElement(l1);
 		addColours(coloursArea, true);
 		l1 = new Label(screen);
 		l1.setText("Secondary");
-		ElementStyle.medium(screen, l1);
+		ElementStyle.medium(l1);
 		l1.setTextAlign(BitmapFont.Align.Center);
-		coloursArea.addChild(l1);
+		coloursArea.addElement(l1);
 		addColours(coloursArea, false);
 
 		//
-		content.addChild(coloursArea, "growx");
+		content.addElement(coloursArea, "growx");
 
 		// Slider panel
-		Container c = new Container();
-		c.setLayoutManager(new MigLayout(screen, "wrap 3, fill", "push[]40[]40[]push", "[][grow,:120:]push"));
-		content.addChild(c, "growx");
+		StyledContainer c = new StyledContainer();
+		c.setLayoutManager(new MigLayout(screen, "wrap 3, fill", "push[]40[]40[]push", "[][][grow,:120:][]push"));
+		content.addElement(c, "growx");
 
 		// Ear Size
 		l1 = new Label(screen);
 		l1.setText("Ears");
-		ElementStyle.medium(screen, l1);
+		ElementStyle.medium(l1);
 		l1.setTextAlign(BitmapFont.Align.Center);
-		c.addChild(l1, "growx");
+		c.addElement(l1, "growx");
 
 		// Height
 		l1 = new Label(screen);
 		l1.setText("Height");
-		ElementStyle.medium(screen, l1);
+		ElementStyle.medium(l1);
 		l1.setTextAlign(BitmapFont.Align.Center);
-		c.addChild(l1, "growx");
+		c.addElement(l1, "growx");
 
 		// Tail
 		l1 = new Label(screen);
 		l1.setText("Tail");
-		ElementStyle.medium(screen, l1);
+		ElementStyle.medium(l1);
 		l1.setTextAlign(BitmapFont.Align.Center);
-		c.addChild(l1, "growx");
+		c.addElement(l1, "growx");
 
-		// Ears
-		Slider<Float> ears = new Slider<Float>(screen, Orientation.VERTICAL, true) {
-			@Override
-			public void onChange(Float value) {
-				character.getAppearance().setEarSize(((Float) value));
-				creatureSpatial.updateSize();
-			}
-		};
-		ears.setSliderModel(new FloatRangeSliderModel(0.0f, 2.0f, character.getAppearance().getEarSize(), 0.1f));
-		c.addChild(ears, "ax 50%, growy");
+		// Ear Size
+		l1 = new Label(screen);
+		l1.setText("Shorter");
+		ElementStyle.altColor(l1);
+		ElementStyle.normal(l1);
+		l1.setTextAlign(BitmapFont.Align.Center);
+		c.addElement(l1, "growx");
 
 		// Height
-		Slider<Float> height = new Slider<Float>(screen, Orientation.VERTICAL, true) {
-			@Override
-			public void onChange(Float value) {
-				character.getAppearance().setSize(((Float) value));
-				creatureSpatial.updateSize();
-			}
-		};
-		height.setSliderModel(new FloatRangeSliderModel(0.9f, 1.1f, character.getAppearance().getSize(), 0.1f));
-		c.addChild(height, "ax 50%, growy");
+		l1 = new Label(screen);
+		l1.setText("Taller");
+		ElementStyle.altColor(l1);
+		ElementStyle.normal(l1);
+		l1.setTextAlign(BitmapFont.Align.Center);
+		c.addElement(l1, "growx");
 
 		// Tail
-		Slider<Float> tail = new Slider<Float>(screen, Orientation.VERTICAL, true) {
-			@Override
-			public void onChange(Float value) {
-				character.getAppearance().setTailSize(((Float) value));
-				creatureSpatial.updateSize();
-			}
-		};
-		tail.setSliderModel(new FloatRangeSliderModel(0f, 2f, character.getAppearance().getTailSize(), 0.1f));
-		c.addChild(tail, "ax 50%, growy");
+		l1 = new Label(screen);
+		l1.setText("Shorter");
+		ElementStyle.altColor(l1);
+		ElementStyle.normal(l1);
+		l1.setTextAlign(BitmapFont.Align.Center);
+		c.addElement(l1, "growx");
+
+		// Ears
+		Slider<Float> ears = new Slider<Float>(screen, Orientation.VERTICAL);
+		ears.setSliderModel(new FloatRangeSliderModel(0.5f, 1.5f, character.getAppearance().getEarSize(), 0.1f));
+		c.addElement(ears, "ax 50%, growy");
+
+		// Height
+		Slider<Float> height = new Slider<Float>(screen, Orientation.VERTICAL);
+		height.onChanged(evt -> {
+			character.getAppearance().setSize(evt.getNewValue());
+			creatureSpatial.updateSize();
+		});
+		height.setReversed(true);
+		height.setSliderModel(
+				new FloatRangeSliderModel(0.9f, 1.1f, 1.1f - character.getAppearance().getSize() + 0.9f, 0.1f));
+		c.addElement(height, "ax 50%, growy");
+
+		// Tail
+		Slider<Float> tail = new Slider<Float>(screen, Orientation.VERTICAL);
+		tail.onChanged(evt -> {
+			character.getAppearance().setTailSize(evt.getNewValue());
+			creatureSpatial.updateSize();
+		});
+		tail.setSliderModel(new FloatRangeSliderModel(0.25f, 2f, character.getAppearance().getTailSize(), 0.1f));
+		c.addElement(tail, "ax 50%, growy");
+
+		// Ear Size
+		l1 = new Label(screen);
+		l1.setText("Longer");
+		ElementStyle.altColor(l1);
+		ElementStyle.normal(l1);
+		l1.setTextAlign(BitmapFont.Align.Center);
+		c.addElement(l1, "growx");
+
+		// Height
+		l1 = new Label(screen);
+		l1.setText("Shorter");
+		ElementStyle.altColor(l1);
+		ElementStyle.normal(l1);
+		l1.setTextAlign(BitmapFont.Align.Center);
+		c.addElement(l1, "growx");
+
+		// Tail
+		l1 = new Label(screen);
+		l1.setText("Longer");
+		ElementStyle.altColor(l1);
+		ElementStyle.normal(l1);
+		l1.setTextAlign(BitmapFont.Align.Center);
+		c.addElement(l1, "growx");
 
 		// Buttons
-		Container buttons = new Container(screen);
+		StyledContainer buttons = new StyledContainer(screen);
 		buttons.setLayoutManager(new MigLayout(screen, "ins 0", "[fill, grow][fill, grow]", "push[]"));
-		FancyButton back = new FancyButton(screen) {
-			@Override
-			public void onButtonMouseLeftUp(MouseButtonEvent evt, boolean toggled) {
-				stateManager.detach(CharacterDetailAppState.this);
-				stateManager.attach(new CharacterCreateAppState());
+		PushButton back = new PushButton(screen) {
+			{
+				setStyleClass("fancy");
 			}
 		};
+		back.onMouseReleased(evt -> {
+			stateManager.detach(CharacterDetailAppState.this);
+			stateManager.attach(new CharacterCreateAppState());
+		});
 		back.setText("Back");
 		back.setToolTipText("Back to previous stage");
-		buttons.addChild(back);
-		FancyButton next = new FancyButton(screen) {
-			@Override
-			public void onButtonMouseLeftUp(MouseButtonEvent evt, boolean toggled) {
-				stateManager.detach(CharacterDetailAppState.this);
-				stateManager.attach(new CharacterClassAppState());
+		buttons.addElement(back);
+		PushButton next = new PushButton(screen) {
+			{
+				setStyleClass("fancy");
 			}
 		};
+		next.onMouseReleased(evt -> {
+			stateManager.detach(CharacterDetailAppState.this);
+			stateManager.attach(new CharacterClassAppState());
+		});
 		next.setText("Next");
 		next.setToolTipText("Move on to the next stage");
-		buttons.addChild(next);
-		content.addChild(buttons, "growx");
+		buttons.addElement(next);
+		content.addElement(buttons, "growx");
+
+		setStage(2);
 
 		// Build, add and show
-		layer.addChild(panel);
-
-		effectHelper.reveal(panel, Effect.EffectType.SlideIn, Effect.EffectDirection.Bottom);
+		layer.showElement(panel);
 
 		new Thread("UpdateTracking") {
 			@Override
@@ -190,7 +233,7 @@ public class CharacterDetailAppState extends AbstractLobbyAppState {
 		}.start();
 	}
 
-	private void addColours(Container coloursArea, boolean primary) {
+	private void addColours(StyledContainer coloursArea, boolean primary) {
 		Label l1;
 		// Skin
 		CreatureDefinition def = ((AbstractCreatureEntity<CreatureDefinition>) creatureSpatial).getDefinition();
@@ -217,17 +260,21 @@ public class CharacterDetailAppState extends AbstractLobbyAppState {
 						showingDialog = this;
 					}
 				};
-				cfc.setTabs(XColorSelector.ColorTab.PALETTE, XColorSelector.ColorTab.WHEEL);
+				if (AppInfo.isDev())
+					cfc.setTabs(ColorSelector.ColorTab.PALETTE, ColorSelector.ColorTab.WHEEL);
+				else
+					cfc.setTabs(ColorSelector.ColorTab.PALETTE);
 
 				l1 = new Label(screen);
 				l1.setText(skin.getTitle());
+				ElementStyle.altColor(l1);
 
-				Element el = new Element(screen);
+				BaseElement el = new BaseElement(screen);
 				el.setLayoutManager(new BorderLayout());
-				el.addChild(l1, BorderLayout.Border.CENTER);
-				el.addChild(cfc, BorderLayout.Border.EAST);
+				el.addElement(l1, Border.CENTER);
+				el.addElement(cfc, Border.EAST);
 
-				coloursArea.addChild(el, "wrap");
+				coloursArea.addElement(el, "wrap");
 			}
 		}
 	}

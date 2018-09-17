@@ -17,8 +17,9 @@ import com.jme3.math.FastMath;
 import com.jme3.math.Vector2f;
 import com.jme3.math.Vector3f;
 
+import icetone.controls.containers.Panel;
 import icetone.controls.text.Label;
-import icetone.controls.windows.Panel;
+import icetone.core.layout.GUIConstants;
 import icetone.core.layout.mig.MigLayout;
 
 /**
@@ -62,64 +63,61 @@ public class DebugInfoAppState extends IcemoonAppState<HUDAppState> {
 
 	@Override
 	protected final void postInitialize() {
-		debugWindow = new Panel(screen, new Vector2f(10, 10), new Vector2f((screen.getWidth() - 20) / 2, 10));
-		debugWindow.setLayoutManager(new MigLayout(screen, "ins 0, gap 0, wrap 8, fill",
-				"[32::][96::][32::][96::][32::][96::][32::][96::]", "[][][][]"));
+		debugWindow = new Panel(screen, new Vector2f(10, 10));
+		debugWindow.setLayoutManager(
+				new MigLayout(screen, "wrap 8, fill", "[32::][96::][32::][96::][32::][96::][32::][96::]", "[][][][]"));
 
-		debugWindow.addChild(new Label("wx:", screen));
-		debugWindow.addChild(wx = new Label(screen));
-		debugWindow.addChild(new Label("wy:", screen));
-		debugWindow.addChild(wy = new Label(screen));
-		debugWindow.addChild(new Label("wz:", screen));
-		debugWindow.addChild(wz = new Label(screen));
-		debugWindow.addChild(new Label("wr:", screen));
-		debugWindow.addChild(wr = new Label(screen));
+		debugWindow.addElement(new Label("wx:", screen));
+		debugWindow.addElement(wx = new Label(screen));
+		debugWindow.addElement(new Label("wy:", screen));
+		debugWindow.addElement(wy = new Label(screen));
+		debugWindow.addElement(new Label("wz:", screen));
+		debugWindow.addElement(wz = new Label(screen));
+		debugWindow.addElement(new Label("wr:", screen));
+		debugWindow.addElement(wr = new Label(screen));
 
-		debugWindow.addChild(new Label("tx:", screen));
-		debugWindow.addChild(tx = new Label(screen));
-		debugWindow.addChild(new Label("ty:", screen));
-		debugWindow.addChild(ty = new Label(screen), "span 5");
+		debugWindow.addElement(new Label("tx:", screen));
+		debugWindow.addElement(tx = new Label(screen));
+		debugWindow.addElement(new Label("ty:", screen));
+		debugWindow.addElement(ty = new Label(screen), "span 5");
 
-		debugWindow.addChild(new Label("cx:", screen));
-		debugWindow.addChild(cx = new Label(screen));
-		debugWindow.addChild(new Label("cy:", screen));
-		debugWindow.addChild(cy = new Label(screen));
-		debugWindow.addChild(new Label("cz:", screen));
-		debugWindow.addChild(cz = new Label(screen), "span 3");
+		debugWindow.addElement(new Label("cx:", screen));
+		debugWindow.addElement(cx = new Label(screen));
+		debugWindow.addElement(new Label("cy:", screen));
+		debugWindow.addElement(cy = new Label(screen));
+		debugWindow.addElement(new Label("cz:", screen));
+		debugWindow.addElement(cz = new Label(screen), "span 3");
 
-		debugWindow.addChild(new Label("tax:", screen));
-		debugWindow.addChild(tax = new Label(screen));
-		debugWindow.addChild(new Label("tay:", screen));
-		debugWindow.addChild(tay = new Label(screen));
-		debugWindow.addChild(new Label("taz:", screen));
-		debugWindow.addChild(taz = new Label(screen), "span 3");
+		debugWindow.addElement(new Label("tax:", screen));
+		debugWindow.addElement(tax = new Label(screen));
+		debugWindow.addElement(new Label("tay:", screen));
+		debugWindow.addElement(tay = new Label(screen));
+		debugWindow.addElement(new Label("taz:", screen));
+		debugWindow.addElement(taz = new Label(screen), "span 3");
 
-		debugWindow.addChild(new Label("tangx:", screen));
-		debugWindow.addChild(tangx = new Label(screen));
-		debugWindow.addChild(new Label("tangy:", screen));
-		debugWindow.addChild(tangy = new Label(screen));
-		debugWindow.addChild(new Label("tangz:", screen));
-		debugWindow.addChild(tangz = new Label(screen), "span 3");
+		debugWindow.addElement(new Label("tangx:", screen));
+		debugWindow.addElement(tangx = new Label(screen));
+		debugWindow.addElement(new Label("tangy:", screen));
+		debugWindow.addElement(tangy = new Label(screen));
+		debugWindow.addElement(new Label("tangz:", screen));
+		debugWindow.addElement(tangz = new Label(screen), "span 3");
 
-		debugWindow.addChild(new Label("chd:", screen));
-		debugWindow.addChild(chd = new Label(screen));
-		debugWindow.addChild(new Label("chh:", screen));
-		debugWindow.addChild(chh = new Label(screen));
-		debugWindow.addChild(new Label("chv:", screen));
-		debugWindow.addChild(chv = new Label(screen), "span 3");
+		debugWindow.addElement(new Label("chd:", screen));
+		debugWindow.addElement(chd = new Label(screen));
+		debugWindow.addElement(new Label("chh:", screen));
+		debugWindow.addElement(chh = new Label(screen));
+		debugWindow.addElement(new Label("chv:", screen));
+		debugWindow.addElement(chv = new Label(screen), "span 3");
 
 		update(0);
 
 		debugWindow.sizeToContent();
-
-		screen.addElement(debugWindow);
-		debugWindow.hide();
-		debugWindow.showWithEffect();
+		screen.showElement(debugWindow);
 	}
 
 	@Override
 	protected final void onCleanup() {
-		debugWindow.hideWithEffect();
+		debugWindow.hide();
 	}
 
 	@Override
@@ -150,7 +148,8 @@ public class DebugInfoAppState extends IcemoonAppState<HUDAppState> {
 				if (chaseCam != null) {
 					chd.setText(String.format("%6.1f", chaseCam.getDistanceToTarget()));
 					chh.setText(String.format("%6.1f",
-							FastMath.normalize(chaseCam.getHorizontalRotation(), 0, FastMath.TWO_PI) * FastMath.RAD_TO_DEG));
+							FastMath.normalize(chaseCam.getHorizontalRotation(), 0, FastMath.TWO_PI)
+									* FastMath.RAD_TO_DEG));
 					chv.setText(String.format("%6.1f", chaseCam.getVerticalRotation() * FastMath.RAD_TO_DEG));
 				}
 
@@ -158,7 +157,8 @@ public class DebugInfoAppState extends IcemoonAppState<HUDAppState> {
 			if (parent.getParent().getTerrainLoader().hasTerrain()) {
 				final Point3D location = parent.getParent().getSpawn().getLocation();
 				if (location != null) {
-					Vector3f ta = parent.getParent().getTerrainLoader().getSlopeAtWorldPosition(IceUI.toVector2fXZ(location));
+					Vector3f ta = parent.getParent().getTerrainLoader()
+							.getSlopeAtWorldPosition(IceUI.toVector2fXZ(location));
 					if (ta != null) {
 						float angx = Vector3f.UNIT_X.angleBetween(ta);
 						float angy = Vector3f.UNIT_Y.angleBetween(ta);

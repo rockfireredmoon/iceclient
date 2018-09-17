@@ -33,6 +33,7 @@ import org.icenet.NetworkException;
 import org.icescene.IcemoonAppState;
 import org.icescene.IcesceneApp;
 import org.icescene.NodeVisitor;
+import org.icescene.NodeVisitor.VisitResult;
 import org.icescene.build.ObjectManipulatorManager;
 import org.icescene.build.SelectionManager;
 import org.icescene.io.ModifierKeysAppState;
@@ -66,11 +67,12 @@ import com.jme3.scene.Node;
 import com.jme3.scene.Spatial;
 import com.jme3.scene.debug.Arrow;
 
-import icetone.core.Element;
-import icetone.core.ElementManager;
+import icetone.core.BaseElement;
+import icetone.core.BaseScreen;
 
-public class BuildAppState extends IcemoonAppState<GameAppState> implements MotionAllowedListener,
-		SelectionManager.Listener<AbstractProp, BuildableControl>, ModifierKeysAppState.Listener, SceneryLoader.Listener {
+public class BuildAppState extends IcemoonAppState<GameAppState>
+		implements MotionAllowedListener, SelectionManager.Listener<AbstractProp, BuildableControl>,
+		ModifierKeysAppState.Listener, SceneryLoader.Listener {
 
 	public static final String BUILD_BUILD_TOOLS_LAYER = "buildToolsLayer";
 	private final static Logger LOG = Logger.getLogger(BuildAppState.class.getName());
@@ -271,10 +273,10 @@ public class BuildAppState extends IcemoonAppState<GameAppState> implements Moti
 		selectedProp = source.getFirstSelectedProp();
 		if (selectedProp != null) {
 			LOG.info(String.format("Selection is %s", selectedProp));
-			propertiesWindow.showWindow();
+			propertiesWindow.show();
 			propertiesWindow.setObject(selectedProp);
 		} else {
-			propertiesWindow.hideWindow();
+			propertiesWindow.hide();
 			propertiesWindow.setObject(null);
 		}
 	}
@@ -285,9 +287,9 @@ public class BuildAppState extends IcemoonAppState<GameAppState> implements Moti
 
 	public void modifiersChange(int newMods) {
 
-		flyByCamera.setMoveSpeed(
-				(newMods & ModifierKeysAppState.SHIFT_MASK) == 0 ? get().getFloat(BUILD_MOVE_SPEED, BUILD_MOVE_SPEED_DEFAULT)
-						: get().getFloat(BUILD_MOVE_SPEED, BUILD_MOVE_SPEED_DEFAULT) / 4f);
+		flyByCamera.setMoveSpeed((newMods & ModifierKeysAppState.SHIFT_MASK) == 0
+				? get().getFloat(BUILD_MOVE_SPEED, BUILD_MOVE_SPEED_DEFAULT)
+				: get().getFloat(BUILD_MOVE_SPEED, BUILD_MOVE_SPEED_DEFAULT) / 4f);
 	}
 
 	public SelectionManager getSelectionManager() {
@@ -322,14 +324,14 @@ public class BuildAppState extends IcemoonAppState<GameAppState> implements Moti
 		propertiesWindow = new PropertiesWindow<AbstractProp>(screen, Config.BUILD_PROPERTIES, prefs) {
 
 			@Override
-			protected PropertiesPanel<AbstractProp> createPropertiesPanel(ElementManager screen, Preferences prefs) {
+			protected PropertiesPanel<AbstractProp> createPropertiesPanel(BaseScreen screen, Preferences prefs) {
 				return new PropertiesPanel<AbstractProp>(screen, prefs) {
 					@Override
 					protected void setAvailable() {
 						AbstractProp object = getObject();
-						for (Map.Entry<String, Element> elEn : propertyComponents.entrySet()) {
+						for (Map.Entry<String, BaseElement> elEn : propertyComponents.entrySet()) {
 							if (!elEn.getKey().equals(AbstractProp.ATTR_LOCKED)) {
-								elEn.getValue().setIsEnabled(object != null && !object.isLocked());
+								elEn.getValue().setEnabled(object != null && !object.isLocked());
 							}
 						}
 					}
@@ -338,7 +340,7 @@ public class BuildAppState extends IcemoonAppState<GameAppState> implements Moti
 			}
 
 		};
-		screen.addElement(propertiesWindow, null, true);
+		screen.showElement(propertiesWindow);
 
 		// A node for the build tools (selection boxes etc)
 		toolsNode = new Node("Tools");
@@ -429,9 +431,10 @@ public class BuildAppState extends IcemoonAppState<GameAppState> implements Moti
 	private void setBuildModeOnNodes() {
 		// Remove stuff that is visible in game only
 		new NodeVisitor(parent.getGameNode()).visit(new NodeVisitor.Visit() {
-			public void visit(Spatial node) {
+			public VisitResult visit(Spatial node) {
 				Visibility v = PropUserDataBuilder.getVisibility(node);
 				PropUserDataBuilder.setVisible(node, v.equals(Visibility.BOTH) || v.equals(Visibility.BUILD_MODE));
+				return VisitResult.CONTINUE;
 			}
 		});
 
@@ -468,10 +471,11 @@ public class BuildAppState extends IcemoonAppState<GameAppState> implements Moti
 	private void removeBuildModeFromNodes() {
 		// Remove buildable control from everything
 		new NodeVisitor(parent.getGameNode()).visit(new NodeVisitor.Visit() {
-			public void visit(Spatial node) {
+			public VisitResult visit(Spatial node) {
 				node.removeControl(BuildableControl.class);
 				Visibility v = PropUserDataBuilder.getVisibility(node);
 				PropUserDataBuilder.setVisible(node, v.equals(Visibility.BOTH) || v.equals(Visibility.GAME));
+				return VisitResult.CONTINUE;
 			}
 		});
 	}
@@ -484,7 +488,8 @@ public class BuildAppState extends IcemoonAppState<GameAppState> implements Moti
 				// Will have already been added to scene, we just need to make
 				// sure it is buildable
 				Visibility v = PropUserDataBuilder.getVisibility(p.getSpatial());
-				PropUserDataBuilder.setVisible(p.getSpatial(), v.equals(Visibility.BOTH) || v.equals(Visibility.BUILD_MODE));
+				PropUserDataBuilder.setVisible(p.getSpatial(),
+						v.equals(Visibility.BOTH) || v.equals(Visibility.BUILD_MODE));
 				if (v.equals(Visibility.BUILD_MODE) || v.equals(Visibility.BOTH)) {
 					p.getSpatial().addControl(createBuildable(p));
 				}

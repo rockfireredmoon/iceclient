@@ -67,7 +67,7 @@
 	<dependencies>
 		<dependency>
 			<groupId>org.icemoon</groupId>
-			<artifactId>iceterrain-app</artifactId>
+			<artifactId>iceterrain-core</artifactId>
 			<version>${project.version}</version>
 		</dependency>
 		<dependency>
@@ -85,12 +85,12 @@
 			<artifactId>java-keyring</artifactId>
 			<version>1.0.1-SNAPSHOT</version>
 		</dependency>
-		<!-- <dependency>
+		<dependency>
 			<groupId>org.icemoon</groupId>
 			<artifactId>iceassets</artifactId>
 			<version>${project.version}</version>
 			<scope>provided</scope>
-		</dependency> -->
+		</dependency>
 		<dependency>
 			<groupId>jME3-ext</groupId>
 			<artifactId>projective-texture-mapping</artifactId>

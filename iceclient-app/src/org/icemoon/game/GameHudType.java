@@ -9,7 +9,7 @@ import org.icescene.tools.AbstractToolArea;
 import org.icescene.tools.HudType;
 import org.icescene.tools.ToolManager;
 
-import icetone.core.ElementManager;
+import icetone.core.BaseScreen;
 
 public class GameHudType implements HudType {
 	public final static GameHudType BUILD = new GameHudType("BUILD");
@@ -65,7 +65,7 @@ public class GameHudType implements HudType {
 	}
 
 	@Override
-	public AbstractToolArea createToolArea(ToolManager toolManager, ElementManager screen) {
+	public AbstractToolArea createToolArea(ToolManager toolManager, BaseScreen screen) {
 		if (this == BUILD) {
 			return new BuildToolArea(toolManager, screen);
 		} else {

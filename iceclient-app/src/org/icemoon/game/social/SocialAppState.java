@@ -15,42 +15,39 @@ import org.icemoon.network.NetworkAppState;
 import org.icemoon.ui.controls.FriendPanel;
 import org.icemoon.ui.controls.IgnoredPanel;
 import org.icenet.NetworkException;
-import org.icescene.Alarm;
 import org.icescene.IcemoonAppState;
 import org.icescene.IcesceneApp;
-import org.iceui.HPosition;
-import org.iceui.VPosition;
 import org.iceui.controls.ElementStyle;
-import org.iceui.controls.FancyButton;
-import org.iceui.controls.FancyDialogBox;
-import org.iceui.controls.FancyInputBox;
-import org.iceui.controls.FancyPersistentWindow;
-import org.iceui.controls.FancyWindow;
-import org.iceui.controls.SaveType;
 import org.iceui.controls.SelectArea;
 import org.iceui.controls.TabPanelContent;
-import org.iceui.controls.UIUtil;
-import org.iceui.controls.XTabControl;
-import org.iceui.controls.ZMenu;
 
 import com.jme3.app.state.AppStateManager;
+import com.jme3.font.BitmapFont.Align;
+import com.jme3.font.BitmapFont.VAlign;
 import com.jme3.font.LineWrapMode;
 import com.jme3.input.KeyInput;
-import com.jme3.input.event.KeyInputEvent;
 import com.jme3.input.event.MouseButtonEvent;
 import com.jme3.math.ColorRGBA;
 import com.jme3.math.Vector2f;
 
-import icetone.controls.buttons.ButtonAdapter;
+import icetone.controls.buttons.PushButton;
+import icetone.controls.containers.TabControl;
 import icetone.controls.lists.ComboBox;
+import icetone.controls.menuing.Menu;
 import icetone.controls.menuing.MenuItem;
 import icetone.controls.text.Label;
 import icetone.controls.text.TextField;
-import icetone.controls.windows.TabControl;
-import icetone.core.Container;
-import icetone.core.Element;
+import icetone.core.BaseElement;
+import icetone.core.Size;
+import icetone.core.StyledContainer;
 import icetone.core.layout.FillLayout;
+import icetone.core.layout.ScreenLayoutConstraints;
 import icetone.core.layout.mig.MigLayout;
+import icetone.core.utils.Alarm;
+import icetone.extras.windows.DialogBox;
+import icetone.extras.windows.InputBox;
+import icetone.extras.windows.PersistentWindow;
+import icetone.extras.windows.SaveType;
 
 /**
  * Displays friends, status, clan etc.
@@ -67,12 +64,12 @@ public class SocialAppState extends IcemoonAppState<HUDAppState> {
 	}
 
 	private Persona player;
-	private FancyPersistentWindow social;
+	private PersistentWindow social;
 	private ComboBox<String> status;
 	private SelectArea friendList;
 	private SelectArea ignoreList;
-	private ButtonAdapter removeFriend;
-	private ButtonAdapter removeIgnore;
+	private PushButton removeFriend;
+	private PushButton removeIgnore;
 	private List<String> ignored;
 	private Alarm.AlarmTask filterAlarmTask;
 
@@ -92,9 +89,8 @@ public class SocialAppState extends IcemoonAppState<HUDAppState> {
 		network = stateManager.getState(NetworkAppState.class);
 
 		// / Minmap window
-		social = new FancyPersistentWindow(screen, Config.SOCIAL, screen.getStyle("Common").getInt("defaultWindowOffset"),
-				VPosition.MIDDLE, HPosition.LEFT, new Vector2f(280, 400), FancyWindow.Size.SMALL, true, SaveType.POSITION_AND_SIZE,
-				Config.get()) {
+		social = new PersistentWindow(screen, Config.SOCIAL, VAlign.Center, Align.Left, new Size(280, 400), true,
+				SaveType.POSITION_AND_SIZE, Config.get()) {
 			@Override
 			protected void onCloseWindow() {
 				super.onCloseWindow();
@@ -102,25 +98,23 @@ public class SocialAppState extends IcemoonAppState<HUDAppState> {
 			}
 		};
 		social.setWindowTitle("Social");
-		social.setIsMovable(true);
-		social.setIsResizable(true);
+		social.setMovable(true);
+		social.setResizable(true);
 		social.setDestroyOnHide(true);
 
-		final Element contentArea = social.getContentArea();
+		final BaseElement contentArea = social.getContentArea();
 		contentArea.setLayoutManager(new FillLayout());
 
-		TabControl tabs = new XTabControl(screen);
+		TabControl tabs = new TabControl(screen);
 		tabs.setUseSlideEffect(true);
 		tabs.addClippingLayer(tabs);
-		contentArea.addChild(tabs);
+		contentArea.addElement(tabs);
 		friendsTab(tabs);
 		clanTab(tabs);
 		ignoreTab(tabs);
 
 		// Show with an effect and sound
-		screen.addElement(social);
-		social.hide();
-		social.showWithEffect();
+		screen.showElement(social);
 
 		// Load initial friends / ignored
 		reloadFriends();
@@ -138,9 +132,7 @@ public class SocialAppState extends IcemoonAppState<HUDAppState> {
 	@Override
 	protected void onCleanup() {
 		cancelFilter();
-		if (social.getIsVisible()) {
-			social.hideWithEffect();
-		}
+		social.hide();
 	}
 
 	private void friendsTab(TabControl tabs) {
@@ -149,30 +141,28 @@ public class SocialAppState extends IcemoonAppState<HUDAppState> {
 		contentArea.setLayoutManager(new MigLayout(screen, "wrap 1", "[grow, fill]", "[][grow, fill][][]"));
 
 		// Status area
-		Element filterArea = new Element(screen);
+		BaseElement filterArea = new BaseElement(screen);
 		filterArea.setLayoutManager(new MigLayout(screen, "ins 0, wrap 2", "[][fill, grow]", "[]"));
 		Label l = new Label(screen);
 		l.setText("Filter");
-		ElementStyle.small(screen, l);
-		filterArea.addChild(l);
+		ElementStyle.normal(l);
+		filterArea.addElement(l);
 
 		//
-		filter = new TextField(screen) {
-			@Override
-			public void controlKeyPressHook(KeyInputEvent evt, String text) {
-				cancelFilter();
-				filterAlarmTask = SocialAppState.this.app.getAlarm().timed(new Callable<Void>() {
-					public Void call() throws Exception {
-						reloadFriends();
-						filterAlarmTask = null;
-						return null;
-					}
-				}, 0.75f);
-			}
-		};
+		filter = new TextField(screen);
+		filter.onKeyboardReleased(evt -> {
+			cancelFilter();
+			filterAlarmTask = SocialAppState.this.app.getAlarm().timed(new Callable<Void>() {
+				public Void call() throws Exception {
+					reloadFriends();
+					filterAlarmTask = null;
+					return null;
+				}
+			}, 0.75f);
+		});
 		filter.setToolTipText("Filter your friend list");
-		filterArea.addChild(filter);
-		contentArea.addChild(filterArea);
+		filterArea.addElement(filter);
+		contentArea.addElement(filterArea);
 
 		// Friend list
 		friendList = new SelectArea(screen) {
@@ -187,81 +177,80 @@ public class SocialAppState extends IcemoonAppState<HUDAppState> {
 				showFriendMenu(getSelectedFriend(), evt.getX() + 20, evt.getY() + 20);
 			}
 		};
-		friendList.setIsMovable(false);
-		friendList.setIsResizable(false);
+		friendList.setMovable(false);
+		friendList.setResizable(false);
 		// friendList.setScrollAreaLayout(new FlowLayout(0,
 		// BitmapFont.VAlign.Top).setFill(true));
-		contentArea.addChild(friendList);
+		contentArea.addElement(friendList);
 
 		// Status area
 
-		Element statusArea = new Element(screen);
+		BaseElement statusArea = new BaseElement(screen);
 		statusArea.setLayoutManager(new MigLayout(screen, "ins 0, wrap 3", "[shrink 0][fill, grow][shrink 0]", "[]"));
 		l = new Label(screen);
 		l.setText("Your Status");
-		ElementStyle.small(screen, l);
-		statusArea.addChild(l);
+		ElementStyle.normal(l);
+		statusArea.addElement(l);
 
-		status = new ComboBox<String>(screen) {
-			@Override
-			public void onChange(int selectedIndex, String value) {
-				setStatus(value);
-			}
-
-			@Override
-			public void controlKeyPressHook(KeyInputEvent evt, String text) {
-				if (evt.getKeyCode() == KeyInput.KEY_RETURN) {
-					if (getText().length() > 0) {
-						setStatus(getText());
-					}
+		status = new ComboBox<String>(screen);
+		status.setSelectedByValue(player.getStatusText());
+		status.onKeyboardPressed(evt -> {
+			if (evt.getKeyCode() == KeyInput.KEY_RETURN) {
+				if (evt.getElement().getText().length() > 0) {
+					setStatus(evt.getElement().getText());
 				}
 			}
-		};
+		});
+		status.onChange(evt -> {
+			if (!evt.getSource().isAdjusting())
+				setStatus(evt.getNewValue());
+		});
 		String statusListString = Config.get().get(Config.SOCIAL_STATUS_LIST, "");
 		String[] statusList = statusListString.split("\n");
 		for (String s : statusList) {
 			status.addListItem(s, s);
 		}
 		status.setToolTipText("Set your status to this text\n(or press RETURN)");
-		status.setSelectedByValue(player.getStatusText(), false);
-		status.setCaretPositionToStart();
-		status.selectTextRangeAll();
-		statusArea.addChild(status);
+		status.getTextField().setCaretPositionToStart();
+		status.getTextField().selectTextRangeAll();
+		statusArea.addElement(status);
 
-		FancyButton set = new FancyButton(screen) {
-			@Override
-			public void onButtonMouseLeftUp(MouseButtonEvent evt, boolean toggled) {
-				if (status.getText().length() > 0) {
-					setStatus(status.getText());
-				}
+		PushButton set = new PushButton(screen) {
+			{
+				setStyleClass("fancy");
 			}
 		};
+		set.onMouseReleased(evt -> {
+			if (status.getText().length() > 0) {
+				setStatus(status.getText());
+			}
+		});
 		set.setText("Set");
-		ElementStyle.small(screen, set);
+		ElementStyle.normal(set);
 		set.setToolTipText("Set your status to this text");
-		statusArea.addChild(set);
-		contentArea.addChild(statusArea);
+		statusArea.addElement(set);
+		contentArea.addElement(statusArea);
 
 		// Buttons
-		Container buttons = new Container(screen);
+		StyledContainer buttons = new StyledContainer(screen);
 		buttons.setLayoutManager(new MigLayout(screen, "", "push[]4[]push"));
-		ButtonAdapter add = new FancyButton(screen) {
-			@Override
-			public void onButtonMouseLeftUp(MouseButtonEvent evt, boolean toggled) {
-				addFriend();
+		PushButton add = new PushButton(screen) {
+			{
+				setStyleClass("fancy");
 			}
 		};
+		add.onMouseReleased(evt -> addFriend());
 		add.setText("Add Friend");
-		buttons.addChild(add);
-		removeFriend = new FancyButton(screen) {
-			@Override
-			public void onButtonMouseLeftUp(MouseButtonEvent evt, boolean toggled) {
-				removeFriend(getSelectedFriend());
+		buttons.addElement(add);
+		removeFriend = new PushButton(screen) {
+			{
+				setStyleClass("fancy");
 			}
 		};
+		removeFriend.onMouseReleased(evt -> removeFriend(getSelectedFriend()));
 		removeFriend.setText("Remove Friend");
-		buttons.addChild(removeFriend);
-		contentArea.addChild(buttons);
+		buttons.addElement(removeFriend);
+		contentArea.addElement(buttons);
 
 		//
 		tabs.addTab("Friends");
@@ -281,37 +270,33 @@ public class SocialAppState extends IcemoonAppState<HUDAppState> {
 	}
 
 	private void showFriendMenu(final Persona friend, float x, float y) {
-		ZMenu subMenu = new ZMenu(screen) {
-
-			@Override
-			protected void itemSelected(ZMenu originator, ZMenuItem item) {
-				Object value = item.getValue();
-				switch ((FriendMenuOption) value) {
-				case IGNORE:
-					try {
-						network.getClient().addIgnored(friend.getDisplayName());
-						reloadIgnored();
-					} catch (NetworkException ne) {
-						error("Failed to ignore friend.", ne);
-					}
-					break;
-				case REMOVE:
-					removeFriend(friend);
-					break;
-				case SEND_MESSAGE:
-					ChatAppState chat = stateManager.getState(ChatAppState.class);
-					chat.setInputText("/private \"" + friend.getDisplayName() + "\" ");
-					break;
-				case WARP_TO:
-					try {
-						network.getClient().warpToPlayer(friend.getDisplayName());
-					} catch (NetworkException ne) {
-						error("Failed to warp to player.", ne);
-					}
-					break;
+		Menu<FriendMenuOption> subMenu = new Menu<>(screen);
+		subMenu.onChanged((evt) -> {
+			switch (evt.getNewValue().getValue()) {
+			case IGNORE:
+				try {
+					network.getClient().addIgnored(friend.getDisplayName());
+					reloadIgnored();
+				} catch (NetworkException ne) {
+					error("Failed to ignore friend.", ne);
 				}
+				break;
+			case REMOVE:
+				removeFriend(friend);
+				break;
+			case SEND_MESSAGE:
+				ChatAppState chat = stateManager.getState(ChatAppState.class);
+				chat.setInputText("/private \"" + friend.getDisplayName() + "\" ");
+				break;
+			case WARP_TO:
+				try {
+					network.getClient().warpToPlayer(friend.getDisplayName());
+				} catch (NetworkException ne) {
+					error("Failed to warp to player.", ne);
+				}
+				break;
 			}
-		};
+		});
 		subMenu.addMenuItem("Send Message", FriendMenuOption.SEND_MESSAGE);
 		if (ignored == null || !ignored.contains(friend.getEntityId())) {
 			subMenu.addMenuItem("Ignore", FriendMenuOption.IGNORE);
@@ -323,15 +308,19 @@ public class SocialAppState extends IcemoonAppState<HUDAppState> {
 	}
 
 	private void addIgnore() {
-		FancyInputBox fib = new FancyInputBox(screen, Vector2f.ZERO, FancyWindow.Size.LARGE, true) {
+		InputBox fib = new InputBox(screen, Vector2f.ZERO, true) {
+			{
+				setStyleClass("large");
+			}
+
 			@Override
 			public void onButtonCancelPressed(MouseButtonEvent evt, boolean toggled) {
-				hideWindow();
+				hide();
 			}
 
 			@Override
 			public void onButtonOkPressed(MouseButtonEvent evt, final String text, boolean toggled) {
-				hideWindow();
+				hide();
 				new Thread() {
 					@Override
 					public void run() {
@@ -348,25 +337,27 @@ public class SocialAppState extends IcemoonAppState<HUDAppState> {
 		fib.setWindowTitle("Ignore Character");
 		fib.setDestroyOnHide(true);
 		fib.setButtonOkText("Ignore");
-		fib.sizeToContent();
 		fib.setWidth(340);
-		fib.setIsResizable(false);
-		fib.setIsMovable(false);
-		UIUtil.center(screen, fib);
-		screen.addElement(fib, null, true);
-		fib.showAsModal(true);
+		fib.setResizable(false);
+		fib.setMovable(false);
+		fib.setModal(true);
+		screen.showElement(fib, ScreenLayoutConstraints.center);
 	}
 
 	private void addFriend() {
-		FancyInputBox fib = new FancyInputBox(screen, Vector2f.ZERO, FancyWindow.Size.LARGE, true) {
+		InputBox fib = new InputBox(screen, Vector2f.ZERO, true) {
+			{
+				setStyleClass("large");
+			}
+
 			@Override
 			public void onButtonCancelPressed(MouseButtonEvent evt, boolean toggled) {
-				hideWindow();
+				hide();
 			}
 
 			@Override
 			public void onButtonOkPressed(MouseButtonEvent evt, final String text, boolean toggled) {
-				hideWindow();
+				hide();
 				new Thread() {
 					@Override
 					public void run() {
@@ -383,20 +374,22 @@ public class SocialAppState extends IcemoonAppState<HUDAppState> {
 		fib.setDestroyOnHide(true);
 		fib.setWindowTitle("Add Friend");
 		fib.setButtonOkText("Add Friend");
-		fib.sizeToContent();
 		fib.setWidth(300);
-		fib.setIsResizable(false);
-		fib.setIsMovable(false);
-		UIUtil.center(screen, fib);
-		screen.addElement(fib, null, true);
-		fib.showAsModal(true);
+		fib.setResizable(false);
+		fib.setMovable(false);
+		fib.setModal(true);
+		screen.showElement(fib, ScreenLayoutConstraints.center);
 	}
 
 	private void removeFriend(final Persona friend) {
-		final FancyDialogBox dialog = new FancyDialogBox(screen, new Vector2f(15, 15), FancyWindow.Size.LARGE, true) {
+		final DialogBox dialog = new DialogBox(screen, new Vector2f(15, 15), true) {
+			{
+				setStyleClass("large");
+			}
+
 			@Override
 			public void onButtonCancelPressed(MouseButtonEvent evt, boolean toggled) {
-				hideWindow();
+				hide();
 			}
 
 			@Override
@@ -418,23 +411,23 @@ public class SocialAppState extends IcemoonAppState<HUDAppState> {
 						}
 					}
 				}.start();
-				hideWindow();
+				hide();
 			}
 		};
 		dialog.getDragBar().setFontColor(ColorRGBA.Orange);
-		dialog.setIsResizable(false);
-		dialog.setIsMovable(false);
+		dialog.setResizable(false);
+		dialog.setMovable(false);
 		dialog.setWindowTitle("Confirm Removal");
-		dialog.setMsg(String.format("Are you sure you wish to remove your friend '%s', a level %d %s %s?", friend.getDisplayName(),
-				friend.getLevel(), Icelib.toEnglish(friend.getProfession()), Icelib.toEnglish(friend.getAppearance().getRace())));
-		UIUtil.center(screen, dialog);
-		screen.addElement(dialog, null, true);
-		dialog.showAsModal(true);
+		dialog.setMsg(String.format("Are you sure you wish to remove your friend '%s', a level %d %s %s?",
+				friend.getDisplayName(), friend.getLevel(), Icelib.toEnglish(friend.getProfession()),
+				Icelib.toEnglish(friend.getAppearance().getRace())));
+		dialog.setModal(true);
+		screen.showElement(dialog, ScreenLayoutConstraints.center);
 	}
 
 	private void setAvailable() {
-		removeFriend.setIsEnabled(friendList.isAnySelected());
-		removeIgnore.setIsEnabled(ignoreList.isAnySelected());
+		removeFriend.setEnabled(friendList.isAnySelected());
+		removeIgnore.setEnabled(ignoreList.isAnySelected());
 	}
 
 	private void clanTab(TabControl tabs) {
@@ -442,9 +435,10 @@ public class SocialAppState extends IcemoonAppState<HUDAppState> {
 		final TabPanelContent contentArea = new TabPanelContent(screen);
 		contentArea.setLayoutManager(new MigLayout(screen, "wrap 1", "[grow, fill]", "[grow, fill][][]"));
 		Label ll = new Label(screen);
-		ll.setText("There is no clan, just one big happy region! i.e. ... I will implement this when clans work in PF :)");
+		ll.setText(
+				"There is no clan, just one big happy region! i.e. ... I will implement this when clans work in PF :)");
 		ll.setTextWrap(LineWrapMode.Word);
-		contentArea.addChild(ll);
+		contentArea.addElement(ll);
 		//
 		tabs.addTab("Clan");
 		tabs.addTabChild(1, contentArea);
@@ -462,42 +456,44 @@ public class SocialAppState extends IcemoonAppState<HUDAppState> {
 				setAvailable();
 			}
 		};
-		ignoreList.setIsMovable(false);
-		ignoreList.setIsResizable(false);
+		ignoreList.setMovable(false);
+		ignoreList.setResizable(false);
 		// ignoreList.setScrollAreaLayout(new FlowLayout(0,
 		// BitmapFont.VAlign.Top).setFill(true));
-		contentArea.addChild(ignoreList);
+		contentArea.addElement(ignoreList);
 
 		// Buttons
-		Container buttons = new Container(screen);
+		StyledContainer buttons = new StyledContainer(screen);
 		buttons.setLayoutManager(new MigLayout(screen, "", "push[]4[]push"));
-		ButtonAdapter add = new FancyButton(screen) {
-			@Override
-			public void onButtonMouseLeftUp(MouseButtonEvent evt, boolean toggled) {
-				addIgnore();
+		PushButton add = new PushButton(screen) {
+			{
+				setStyleClass("fancy");
 			}
 		};
+		add.onMouseReleased(evt -> addIgnore());
 		add.setText("Add Ignore");
-		buttons.addChild(add);
-		removeIgnore = new FancyButton(screen) {
-			@Override
-			public void onButtonMouseLeftUp(MouseButtonEvent evt, boolean toggled) {
-				new Thread() {
-					@Override
-					public void run() {
-						try {
-							network.getClient().removeIgnored(((IgnoredPanel) ignoreList.getSelectedItem()).getCharacter());
-							reloadIgnored();
-						} catch (NetworkException ne) {
-							LOG.log(Level.SEVERE, "Failed to add ignored.", ne);
-						}
-					}
-				}.start();
+		buttons.addElement(add);
+		removeIgnore = new PushButton(screen) {
+			{
+				setStyleClass("fancy");
 			}
 		};
+		removeIgnore.onMouseReleased(evt -> {
+			new Thread() {
+				@Override
+				public void run() {
+					try {
+						network.getClient().removeIgnored(((IgnoredPanel) ignoreList.getSelectedItem()).getCharacter());
+						reloadIgnored();
+					} catch (NetworkException ne) {
+						LOG.log(Level.SEVERE, "Failed to add ignored.", ne);
+					}
+				}
+			}.start();
+		});
 		removeIgnore.setText("Remove Ignore");
-		buttons.addChild(removeIgnore);
-		contentArea.addChild(buttons);
+		buttons.addElement(removeIgnore);
+		contentArea.addElement(buttons);
 
 		//
 		tabs.addTab("Ignored");
@@ -530,9 +526,9 @@ public class SocialAppState extends IcemoonAppState<HUDAppState> {
 							sb.append(statusText);
 							status.addListItem(statusText, statusText);
 							Config.get().put(Config.SOCIAL_STATUS_LIST, sb.toString());
-							status.setSelectedByValue(sb.toString(), false);
-							status.setCaretPositionToStart();
-							status.selectTextRangeAll();
+							status.runAdjusting(() -> status.setSelectedByValue(sb.toString()));
+							status.getTextField().setCaretPositionToStart();
+							status.getTextField().selectTextRangeAll();
 
 							return null;
 						}
@@ -558,7 +554,7 @@ public class SocialAppState extends IcemoonAppState<HUDAppState> {
 				final IgnoredPanel fp = new IgnoredPanel(screen, l);
 				app.enqueue(new Callable<Void>() {
 					public Void call() throws Exception {
-						ignoreList.addListItem(fp);
+						ignoreList.addScrollableContent(fp);
 						return null;
 					}
 				});
@@ -583,8 +579,7 @@ public class SocialAppState extends IcemoonAppState<HUDAppState> {
 					for (Persona character : friends) {
 						String filterText = filter.getText().trim().toLowerCase();
 						if (filterText.equals("") || character.getDisplayName().toLowerCase().contains(filterText)) {
-							final FriendPanel fp = new FriendPanel(screen, character);
-							friendList.addListItem(fp);
+							friendList.addScrollableContent(new FriendPanel(screen, character));
 						}
 					}
 					setAvailable();

@@ -1,12 +1,11 @@
 package org.icemoon.game.maps;
 
-import static icetone.core.layout.LUtil.noScaleNoDock;
-
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.logging.Logger;
 import java.util.prefs.PreferenceChangeEvent;
+import java.util.prefs.Preferences;
 
 import org.icelib.Point3D;
 import org.icelib.Zone;
@@ -23,35 +22,23 @@ import org.icenet.client.SpawnListener;
 import org.icenet.client.SpawnListenerAdapter;
 import org.icescene.IcemoonAppState;
 import org.icescene.IcesceneApp;
+import org.icescene.MiniMapWindow;
 import org.icescene.entities.AbstractSpawnEntity;
 import org.icescene.scene.MaskFilter;
 import org.icescene.scene.Sprite;
-import org.iceui.HPosition;
-import org.iceui.VPosition;
-import org.iceui.controls.FancyPersistentWindow;
-import org.iceui.controls.FancyPositionableWindow;
-import org.iceui.controls.FancyWindow;
-import org.iceui.controls.SaveType;
 
 import com.jme3.app.state.AppStateManager;
-import com.jme3.font.BitmapFont;
-import com.jme3.input.event.MouseButtonEvent;
 import com.jme3.math.FastMath;
 import com.jme3.math.Quaternion;
-import com.jme3.math.Vector2f;
 import com.jme3.math.Vector3f;
-import com.jme3.math.Vector4f;
 import com.jme3.post.FilterPostProcessor;
 import com.jme3.renderer.Camera;
 import com.jme3.renderer.ViewPort;
 
-import icetone.controls.buttons.ButtonAdapter;
-import icetone.controls.text.Label;
-import icetone.core.Element;
-import icetone.core.layout.FillLayout;
-import icetone.core.layout.XYLayoutManager;
-import icetone.core.layout.mig.MigLayout;
-import icetone.core.utils.UIDUtil;
+import icetone.core.BaseElement;
+import icetone.core.Size;
+import icetone.core.event.ScreenEvent;
+import icetone.core.event.ScreenEventListener;
 
 public class RealtimeMiniMapAppState extends IcemoonAppState<HUDAppState> {
 
@@ -62,11 +49,10 @@ public class RealtimeMiniMapAppState extends IcemoonAppState<HUDAppState> {
 	public static final int MARKER_HEIGHT = 16;
 	private Camera mapCamera;
 	private Vector3f camLoc;
-	private FancyPositionableWindow minimapWindow;
+	private MiniMapWindow minimapWindow;
 	private ViewPort mapViewport;
 	private ClientListenerAdapter listener;
-	private Element buttons;
-	private Element overlay;
+	private BaseElement xoverlay;
 	private FilterPostProcessor fpp;
 	private MaskFilter maskFilter;
 	private float targetZoom = Config.get().getFloat(Config.MINIMAP_ZOOM, Config.MINIMAP_ZOOM_DEFAULT);
@@ -76,12 +62,16 @@ public class RealtimeMiniMapAppState extends IcemoonAppState<HUDAppState> {
 	private SpawnListener spawnListener;
 	private float sh;
 	private float sw;
-	private Element mapArea;
-	private IcesceneApp.AppListener appListener;
+	private BaseElement mapArea;
+	private ScreenEventListener appListener;
 	private NetworkAppState network;
 
 	public RealtimeMiniMapAppState() {
-		super(Config.get());
+		this(Config.get());
+	}
+
+	public RealtimeMiniMapAppState(Preferences prefs) {
+		super(prefs);
 		addPrefKeyPattern(Config.MINIMAP_ZOOM);
 	}
 
@@ -100,16 +90,15 @@ public class RealtimeMiniMapAppState extends IcemoonAppState<HUDAppState> {
 
 		// Watch for resizes of the window and recreate the viewport when it
 		// happens
-		app.addListener(appListener = new IcesceneApp.AppListener() {
-			public void reshape(int w, int h) {
+		screen.addScreenListener(appListener = new ScreenEventListener() {
+			@Override
+			public void onScreenEvent(ScreenEvent evt) {
 				doLayout();
 			}
 		});
 
 		// / Minmap window
-		minimapWindow = new FancyPersistentWindow(screen, Config.MINIMAP, screen.getStyle("Common").getInt("defaultWindowOffset"),
-				VPosition.TOP, HPosition.RIGHT, new Vector2f(179, 195), FancyWindow.Size.MINIMAP, false, SaveType.POSITION,
-				Config.get()) {
+		minimapWindow = new MiniMapWindow(screen, Config.get()) {
 			@Override
 			protected void onControlMoveHook() {
 				// TODO A bit nasty but when you have filter post processors,
@@ -120,93 +109,40 @@ public class RealtimeMiniMapAppState extends IcemoonAppState<HUDAppState> {
 					doLayout();
 				}
 			}
-		};
-		LOG.info(String.format("Setting minimap zone to %s ", network.getClient().getZone()));
-		minimapWindow.setWindowTitle(getMinimapText());
-		minimapWindow.setIsMovable(true);
-		minimapWindow.setIsResizable(false);
-		final Element contentArea = minimapWindow.getContentArea();
 
-		contentArea.setLayoutManager(new FillLayout());
-
-		// Overlay
-		overlay = new Element(screen, UIDUtil.getUID(), Vector4f.ZERO, screen.getStyle("Minimap").getString("overlayImg"));
-		contentArea.addChild(overlay);
-		//
-
-		// Buttons
-		buttons = new Element(screen);
-		buttons.setLayoutManager(new XYLayoutManager());
-
-		// Open world map
-		ButtonAdapter openWorldMap = new ButtonAdapter(screen, Vector2f.ZERO, screen.getStyle("Minimap").getVector2f(
-				"worldMapButtonSize"), screen.getStyle("Minimap").getVector4f("worldMapButtonResizeBorders"), screen.getStyle(
-				"Minimap").getString("worldMapImg")) {
 			@Override
-			public void onButtonMouseLeftUp(MouseButtonEvent evt, boolean toggled) {
-				RealtimeMiniMapAppState.this.parent.toggle(WorldMapAppState.class);
-			}
-		};
-		noScaleNoDock(openWorldMap);
-		openWorldMap.setToolTipText("Show World Map");
-		openWorldMap.setButtonHoverInfo(screen.getStyle("Minimap").getString("worldMapHoverImg"), null);
-		openWorldMap.setButtonPressedInfo(screen.getStyle("Minimap").getString("worldMapPressedImg"), null);
-		buttons.addChild(openWorldMap, screen.getStyle("Minimap").getVector2f("worldMapButtonPosition"));
-
-		// Zoon in
-		ButtonAdapter zoomIn = new ButtonAdapter(screen, Vector2f.ZERO, screen.getStyle("Minimap").getVector2f("zoomInButtonSize"),
-				screen.getStyle("Minimap").getVector4f("zoomInButtonResizeBorders"), screen.getStyle("Minimap").getString(
-						"zoomInImg")) {
-			@Override
-			public void onButtonMouseLeftUp(MouseButtonEvent evt, boolean toggled) {
+			protected void onZoomIn() {
 				Config.get().putFloat(Config.MINIMAP_ZOOM,
 						Math.max(Constants.MINIMAP_MIN_ZOOM, targetZoom - Constants.MINIMAP_ZOOM_STEP));
 			}
-		};
-		noScaleNoDock(zoomIn);
-		zoomIn.setButtonHoverInfo(screen.getStyle("Minimap").getString("zoomInHoverImg"), null);
-		zoomIn.setButtonPressedInfo(screen.getStyle("Minimap").getString("zoomInPressedImg"), null);
-		zoomIn.setToolTipText("Zoom In");
-		buttons.addChild(zoomIn, screen.getStyle("Minimap").getVector2f("zoomInButtonPosition"));
 
-		// Zoon out
-		ButtonAdapter zoomOut = new ButtonAdapter(screen, Vector2f.ZERO, screen.getStyle("Minimap")
-				.getVector2f("zoomOutButtonSize"), screen.getStyle("Minimap").getVector4f("zoomOutButtonResizeBorders"), screen
-				.getStyle("Minimap").getString("zoomOutImg")) {
 			@Override
-			public void onButtonMouseLeftUp(MouseButtonEvent evt, boolean toggled) {
+			protected void onZoomOut() {
 				Config.get().putFloat(Config.MINIMAP_ZOOM,
 						Math.min(Constants.MINIMAP_MAX_ZOOM, targetZoom + Constants.MINIMAP_ZOOM_STEP));
 			}
+
+			@Override
+			protected void onOpenWorldMap() {
+				RealtimeMiniMapAppState.this.parent.toggle(WorldMapAppState.class);
+
+			}
+
+			@Override
+			protected void onHome() {
+			}
 		};
-		noScaleNoDock(zoomOut);
-		zoomOut.setToolTipText("Zoom Out");
-		zoomOut.setButtonHoverInfo(screen.getStyle("Minimap").getString("zoomOutHoverImg"), null);
-		zoomOut.setButtonPressedInfo(screen.getStyle("Minimap").getString("zoomOutPressedImg"), null);
-		buttons.addChild(zoomOut, screen.getStyle("Minimap").getVector2f("zoomOutButtonPosition"));
-
-		createDirectionButton(buttons, "northPosition", "N");
-		createDirectionButton(buttons, "southPosition", "S");
-		createDirectionButton(buttons, "eastPosition", "E");
-		createDirectionButton(buttons, "westPosition", "W");
-
-		contentArea.addChild(buttons);
-
-		// Map container area
-		Element mapContainer = new Element(screen);
-		mapContainer.setLayoutManager(new MigLayout(screen, "ins 0, gap 0", "push[]push", "push[]push"));
-		mapContainer.setAsContainerOnly();
-		contentArea.addChild(mapContainer);
+		LOG.info(String.format("Setting minimap zone to %s ", network.getClient().getZone()));
+		minimapWindow.setWindowTitle(getMinimapText());
+		final BaseElement contentArea = minimapWindow.getContentArea();
 
 		// Map area (resized to be same size as view port and centered within
 		// contain)
-		mapArea = new Element(screen);
-		mapArea.setAsContainerOnly();
-		mapContainer.addChild(mapArea);
+		mapArea = new BaseElement(screen);
+		contentArea.addElement(mapArea);
 
 		// Show wnidow
-		minimapWindow.showWithEffect();
-		screen.addElement(minimapWindow);
+		screen.showElement(minimapWindow);
 
 		// Create the viewport
 		createMiniMapViewport();
@@ -250,8 +186,8 @@ public class RealtimeMiniMapAppState extends IcemoonAppState<HUDAppState> {
 				final Sprite marker = markers.remove(spawn);
 				app.run(new Runnable() {
 					public void run() {
-						LOG.info(String.format("Removing marker for spawn %s (%s)", spawn.getId(), spawn.getPersona()
-								.getDisplayName()));
+						LOG.info(String.format("Removing marker for spawn %s (%s)", spawn.getId(),
+								spawn.getPersona().getDisplayName()));
 						marker.removeFromParent();
 					}
 				});
@@ -287,8 +223,8 @@ public class RealtimeMiniMapAppState extends IcemoonAppState<HUDAppState> {
 	}
 
 	@Override
-	public void stateDetached(AppStateManager stateManager) {
-		app.removeListener(appListener);
+	protected void onStateDetached() {
+		screen.removeScreenListener(appListener);
 		final Client client = network.getClient();
 		if (client != null) {
 			client.removeListener(listener);
@@ -298,7 +234,7 @@ public class RealtimeMiniMapAppState extends IcemoonAppState<HUDAppState> {
 
 	@Override
 	protected void onCleanup() {
-		minimapWindow.hideWithEffect();
+		minimapWindow.hide();
 	}
 
 	@Override
@@ -333,20 +269,6 @@ public class RealtimeMiniMapAppState extends IcemoonAppState<HUDAppState> {
 		updateMarkers();
 	}
 
-	private void createDirectionButton(Element container, String positionStyle, String text) {
-		Label b = new Label(screen, UIDUtil.getUID(), Vector2f.ZERO, screen.getStyle("Minimap").getVector2f("directionButtonSize"),
-				screen.getStyle("Minimap").getVector4f("directionButtonResizeBorders"), screen.getStyle("Minimap").getString(
-						"directionButtonImg"));
-		b.setText(text);
-		b.setFont(screen.getStyle("Font").getString(screen.getStyle("Minimap").getString("directionButtonFontName")));
-		b.setFontSize(screen.getStyle("Minimap").getFloat("directionButtonFontSize"));
-		b.setFontColor(screen.getStyle("Minimap").getColorRGBA("directionButtonFontColor"));
-		b.setTextAlign(BitmapFont.Align.Center);
-		b.setTextVAlign(BitmapFont.VAlign.Center);
-		b.setTextPadding(2);
-		container.addChild(b, screen.getStyle("Minimap").getVector2f(positionStyle));
-	}
-
 	private String getMinimapText() {
 		StringBuilder bui = new StringBuilder();
 		final Zone zone = network.getClient().getZone();
@@ -375,16 +297,20 @@ public class RealtimeMiniMapAppState extends IcemoonAppState<HUDAppState> {
 					// Get the screen cordinates from the map camera. This will
 					// be the ACTUAL location
 					// on the screen, not within the view port
-					Vector3f screencoords = mapCamera.getScreenCoordinates(sd.getEntity().getSpatial().getLocalTranslation());
+					Vector3f screencoords = mapCamera
+							.getScreenCoordinates(sd.getEntity().getSpatial().getLocalTranslation());
 
 					// Now make it relative to
-					Vector3f screenx = screencoords.subtract(new Vector3f((screen.getWidth() * mapCamera.getViewPortLeft()),
-							(screen.getHeight() * mapCamera.getViewPortBottom()), 0));
+					Vector3f screenx = screencoords
+							.subtract(new Vector3f((screen.getWidth() * mapCamera.getViewPortLeft()),
+									(screen.getHeight() * mapCamera.getViewPortBottom()), 0));
 
-					if (screenx.x >= 0 && screenx.x < MAP_VIEWPORT_WIDTH && screenx.y >= 0 && screenx.y < MAP_VIEWPORT_HEIGHT) {
+					if (screenx.x >= 0 && screenx.x < MAP_VIEWPORT_WIDTH && screenx.y >= 0
+							&& screenx.y < MAP_VIEWPORT_HEIGHT) {
 						final Sprite sprite = en.getValue();
-						Element container = (Element) sprite.getParent();
-						container.setPosition(screenx.x - (container.getWidth() / 2), screenx.y - (container.getHeight() / 2));
+						BaseElement container = (BaseElement) sprite.getParent();
+						container.setPosition(screenx.x - (container.getWidth() / 2),
+								screenx.y - (container.getHeight() / 2));
 						// en.getValue().setLocalTranslation((screenx.x * sw),
 						// screenx.y * sh, 1);
 
@@ -415,7 +341,7 @@ public class RealtimeMiniMapAppState extends IcemoonAppState<HUDAppState> {
 		mapCamera.setViewPort(left, right, bottom, top);
 
 		// Set the GUI map area to be the same size as the view port
-		mapArea.setMinDimensions(new Vector2f(cw, ch));
+		mapArea.setMinDimensions(new Size(cw, ch));
 		mapArea.setDimensions(cw, ch);
 		mapArea.setX((mapArea.getElementParent().getWidth() - cw) / 2f);
 		mapArea.setY((mapArea.getElementParent().getHeight() - ch) / 2f);
@@ -462,13 +388,13 @@ public class RealtimeMiniMapAppState extends IcemoonAppState<HUDAppState> {
 			}
 		}
 
-		Element el = new Element(screen, UIDUtil.getUID(), new Vector2f(MARKER_WIDTH, MARKER_HEIGHT), Vector4f.ZERO, null);
+		BaseElement el = new BaseElement(screen, new Size(MARKER_WIDTH, MARKER_HEIGHT));
 		el.setToolTipText(spawn.getPersona().getDisplayName());
 		spawnMarker.center().move(MARKER_WIDTH / 2f, MARKER_HEIGHT / 2f, 0);
 		el.attachChild(spawnMarker);
 		setSpawnRotation(spawn, spawnMarker);
 
-		mapArea.addChild(el);
+		mapArea.addElement(el);
 		markers.put(spawn, spawnMarker);
 	}
 
@@ -512,8 +438,8 @@ public class RealtimeMiniMapAppState extends IcemoonAppState<HUDAppState> {
 	}
 
 	private Sprite createSpawnMarker(Spawn spawn, int row, int col) {
-		Sprite spawnMarker = new Sprite("SpawnMarker" + spawn.getId(), assetManager, "Interface/Styles/Gold/sticker-legend.png",
-				row, col, MARKER_WIDTH, MARKER_HEIGHT);
+		Sprite spawnMarker = new Sprite("SpawnMarker" + spawn.getId(), assetManager,
+				"Interface/Styles/Gold/Client/sticker-legend.png", row, col, MARKER_WIDTH, MARKER_HEIGHT);
 		spawnMarker.setLocalScale(MARKER_WIDTH, MARKER_HEIGHT, 0);
 		return spawnMarker;
 	}
@@ -523,7 +449,7 @@ public class RealtimeMiniMapAppState extends IcemoonAppState<HUDAppState> {
 	}
 
 	private float getOffsetY() {
-		return minimapWindow.getContentArea().getAbsoluteY() + 3;
+		return screen.getHeight() - (minimapWindow.getY() + minimapWindow.getHeight() - 2);
 	}
 
 	private void setSpawnRotation(Spawn spawn, Sprite spawnMarker) {

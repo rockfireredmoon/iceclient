@@ -4,46 +4,39 @@ import java.util.Arrays;
 import java.util.List;
 
 import org.icemoon.Config;
-import org.icemoon.Constants;
 import org.icemoon.game.HUDAppState;
 import org.icemoon.network.NetworkAppState;
 import org.icescene.IcemoonAppState;
 import org.icescene.IcesceneApp;
-import org.iceui.HPosition;
-import org.iceui.UIConstants;
-import org.iceui.VPosition;
-import org.iceui.controls.FancyButton;
-import org.iceui.controls.FancyPositionableWindow;
-import org.iceui.controls.FancyWindow;
-import org.iceui.effects.EffectHelper;
 
 import com.jme3.app.state.AppStateManager;
-import com.jme3.input.event.MouseButtonEvent;
+import com.jme3.font.BitmapFont.Align;
+import com.jme3.font.BitmapFont.VAlign;
 import com.jme3.math.Vector2f;
 
-import icetone.controls.buttons.ButtonAdapter;
 import icetone.controls.buttons.CheckBox;
+import icetone.controls.buttons.PushButton;
+import icetone.controls.containers.Panel;
+import icetone.controls.menuing.AutoHide;
 import icetone.controls.text.Label;
-import icetone.controls.windows.Panel;
+import icetone.core.BaseElement;
+import icetone.core.BaseScreen;
+import icetone.core.Size;
 import icetone.core.Element;
-import icetone.core.Screen;
-import icetone.core.layout.LUtil;
+import icetone.core.ZPriority;
 import icetone.core.layout.mig.MigLayout;
-import icetone.core.utils.UIDUtil;
-import icetone.effects.Effect;
-import icetone.framework.animation.Interpolation;
+import icetone.extras.windows.PositionableFrame;
 
 /**
  * Displays the world map (at mulitple possible zoom levels) based on the
- * players current
- * location.
+ * players current location.
  */
 public class WorldMapAppState extends IcemoonAppState<HUDAppState> {
 
-	private FancyPositionableWindow mapWindow;
+	private PositionableFrame mapWindow;
 	private int mapNumber = 0;
-	private ButtonAdapter zoomIn;
-	private ButtonAdapter zoomOut;
+	private PushButton zoomIn;
+	private PushButton zoomOut;
 	private Panel legends;
 	private NetworkAppState network;
 
@@ -56,12 +49,15 @@ public class WorldMapAppState extends IcemoonAppState<HUDAppState> {
 		mapNumber = 0;
 		network = stateManager.getState(NetworkAppState.class);
 
-		/// Minmap window
-		mapWindow = new FancyPositionableWindow(screen, "WorldMap", screen.getStyle("Common").getInt("defaultWindowOffset"),
-				VPosition.MIDDLE, HPosition.CENTER, new Vector2f(760, 630), FancyWindow.Size.LARGE, true) {
+		/// Map window
+		mapWindow = new PositionableFrame(screen, "WorldMap", 0, VAlign.Center, Align.Center, new Size(760, 630),
+				true) {
+			{
+				setStyleClass("large");
+			}
+
 			@Override
 			protected void onCloseWindow() {
-				super.onCloseWindow();
 				stateManager.detach(WorldMapAppState.this);
 				hideLegends();
 			}
@@ -75,98 +71,89 @@ public class WorldMapAppState extends IcemoonAppState<HUDAppState> {
 			}
 		};
 		mapWindow.setDestroyOnHide(true);
-		Element dragBar = mapWindow.getDragBar();
-		dragBar.setText(network.getClient().getZone().getName());
-		dragBar.setLayoutManager(new MigLayout(screen, "", "[]push[]4[]", "22[center]push"));
-		mapWindow.setIsMovable(true);
-		mapWindow.setIsResizable(false);
-		final Element contentArea = mapWindow.getContentArea();
+		mapWindow.setMovable(true);
+		mapWindow.setResizable(false);
 
-		contentArea.setLayoutManager(new MigLayout(screen, "fill", "[grow, align center]", "[grow, fill, align center]"));
+		// Title
+		BaseElement dragBar = mapWindow.getDragBar();
+		if (network == null)
+			dragBar.setText("OFFLINE");
+		else
+			dragBar.setText(network.getClient().getZone().getName());
 
 		// Map image
 		String mapImg = mapNumber < getMaps().size() ? getMaps().get(0) : null;
-		final Label map = new Label(screen, UIDUtil.getUID(), mapImg);
-		contentArea.addChild(map, "width 784, height 541");
+		final Element map = new Element(screen, mapImg);
+		map.setStyleClass("map");
+
+		// Content
+		final BaseElement contentArea = mapWindow.getContentArea();
+		contentArea
+				.setLayoutManager(new MigLayout(screen, "fill", "[grow, align center]", "[grow, fill, align center]"));
+		contentArea.addElement(map);
 
 		// Legends
-		FancyButton showLegends = new FancyButton(screen) {
-
-			@Override
-			public void onButtonMouseLeftUp(MouseButtonEvent evt, boolean toggled) {
-				if (legends == null) {
-					showLegends();
-				} else {
-					hideLegends();
-				}
+		PushButton showLegends = new PushButton(screen) {
+			{
+				setStyleClass("fancy");
 			}
 		};
-		showLegends.setPreferredDimensions(LUtil.LAYOUT_SIZE);
+		showLegends.onMouseReleased(evt -> {
+			if (legends == null || !legends.isVisible()) {
+				showLegends();
+			} else {
+				hideLegends();
+			}
+		});
 		showLegends.setText("Legends");
 		showLegends.setToolTipText("Show and select legends");
-		dragBar.addChild(showLegends);
 
-		// Zoom buttons
-		zoomIn = new ButtonAdapter(screen, UIDUtil.getUID(), Vector2f.ZERO,
-				screen.getStyle("ZoomInButton").getVector2f("defaultSize"),
-				screen.getStyle("ZoomInButton").getVector4f("resizeBorders"),
-				screen.getStyle("ZoomInButton").getString("defaultImg")) {
-			@Override
-			public void onButtonMouseLeftUp(MouseButtonEvent evt, boolean toggled) {
-				mapNumber--;
-				if (mapNumber < 0) {
-					mapNumber = 0;
-				} else {
-					map.getElementTexture().setImage(app.getAssetManager().loadTexture(getMaps().get(mapNumber)).getImage());
-					playOpenSound();
-				}
-
-				checkAvailable();
+		// Zoom In
+		zoomIn = new PushButton(screen);
+		zoomIn.setStyleClass("zoom-in");
+		zoomIn.onMouseReleased(evt -> {
+			mapNumber--;
+			if (mapNumber < 0) {
+				mapNumber = 0;
+			} else {
+				map.getElementTexture()
+						.setImage(app.getAssetManager().loadTexture(getMaps().get(mapNumber)).getImage());
 			}
-		};
-		zoomIn.setButtonHoverInfo(screen.getStyle("ZoomInButton").getString("hoverImg"), null);
-		zoomIn.setButtonPressedInfo(screen.getStyle("ZoomInButton").getString("pressedImg"), null);
+
+			checkAvailable();
+		});
 		zoomIn.setToolTipText("Zoom In");
-		dragBar.addChild(zoomIn);
-		zoomOut = new ButtonAdapter(screen, UIDUtil.getUID(), Vector2f.ZERO,
-				screen.getStyle("ZoomOutButton").getVector2f("defaultSize"),
-				screen.getStyle("ZoomOutButton").getVector4f("resizeBorders"),
-				screen.getStyle("ZoomOutButton").getString("defaultImg")) {
-			@Override
-			public void onButtonMouseLeftUp(MouseButtonEvent evt, boolean toggled) {
 
-				mapNumber++;
-				if (mapNumber >= getMaps().size()) {
-					mapNumber--;
-				} else {
-					map.getElementTexture().setImage(app.getAssetManager().loadTexture(getMaps().get(mapNumber)).getImage());
-					playOpenSound();
-				}
-				checkAvailable();
+		// Zoom Out
+		zoomOut = new PushButton(screen);
+		zoomOut.setStyleClass("zoom-out");
+		zoomOut.onMouseReleased(evt -> {
+			mapNumber++;
+			if (mapNumber >= getMaps().size()) {
+				mapNumber--;
+			} else {
+				map.getElementTexture()
+						.setImage(app.getAssetManager().loadTexture(getMaps().get(mapNumber)).getImage());
 			}
-		};
-		zoomOut.setButtonHoverInfo(screen.getStyle("ZoomOutButton").getString("hoverImg"), null);
-		zoomOut.setButtonPressedInfo(screen.getStyle("ZoomOutButton").getString("pressedImg"), null);
+			checkAvailable();
+		});
 		zoomOut.setToolTipText("Zoom Out");
-		dragBar.addChild(zoomOut);
+
+		mapWindow.getAccessories().addElement(showLegends);
+		mapWindow.getAccessories().addElement(zoomIn);
+		mapWindow.getAccessories().addElement(zoomOut);
+
 		checkAvailable();
 
 		// Show with an effect and sound
-		screen.addElement(mapWindow);
-		Effect slide = new EffectHelper().effect(mapWindow, Effect.EffectType.SlideIn, Effect.EffectDirection.Top,
-				Effect.EffectEvent.Show, UIConstants.UI_EFFECT_TIME);
-		slide.setInterpolation(Interpolation.bounce);
-		playOpenSound();
-		Effect slideOut = new Effect(Effect.EffectType.SlideOut, Effect.EffectEvent.Hide, UIConstants.UI_EFFECT_TIME);
-		slideOut.setEffectDirection(Effect.EffectDirection.Top);
-		slideOut.setDestroyOnHide(true);
-		mapWindow.addEffect(Effect.EffectEvent.Hide, slideOut);
+		screen.showElement(mapWindow);
 
 		return stateManager.getState(HUDAppState.class);
 	}
 
 	public List<String> getMaps() {
-		return Arrays.asList("Maps/Europe_Map_Local_Camelot.jpg", "Maps/Europe_Map_Region_Anglorum.jpg", "Maps/Map_World_BG.jpg");
+		return Arrays.asList("Maps/Europe_Map_Local_Camelot.jpg", "Maps/Europe_Map_Region_Anglorum.jpg",
+				"Maps/Map_World_BG.jpg");
 	}
 
 	@Override
@@ -179,23 +166,18 @@ public class WorldMapAppState extends IcemoonAppState<HUDAppState> {
 	@Override
 	protected void onCleanup() {
 		hideLegends();
-		if (mapWindow.getIsVisible()) {
-			mapWindow.hideWithEffect();
-			((Screen) screen).playAudioNode(Constants.SOUND_MAP_CLOSE, 1);
-		}
+		mapWindow.hide();
 	}
 
 	private void hideLegends() {
-		if (legends != null && legends.getIsVisible()) {
-			legends.hideWithEffect();
-			legends = null;
+		if (legends != null && legends.isVisible()) {
+			legends.hide();
 		}
 	}
 
 	private void positionLegends() {
-		Vector2f dim = legends.getOrgDimensions();
-		Vector2f pos = new Vector2f(mapWindow.getAbsoluteX() - dim.x, mapWindow.getHeight() + mapWindow.getAbsoluteY()
-				- screen.getStyle("FancyWindowLarge#Dragbar").getFloat("defaultControlSize") - dim.y);
+		Vector2f dim = legends.getDimensions();
+		Vector2f pos = new Vector2f(mapWindow.getAbsoluteX() - dim.x, mapWindow.getDragBar().getHeight());
 		if (pos.x < 0) {
 			pos.x = 0;
 		}
@@ -203,55 +185,39 @@ public class WorldMapAppState extends IcemoonAppState<HUDAppState> {
 	}
 
 	private void showLegends() {
-		legends = new Panel(screen, Vector2f.ZERO, new Vector2f(200, 120));
-		legends.setLayoutManager(new MigLayout(screen, "wrap 3, gap 1, ins 2", "[shrink 0]4[fill, grow][]"));
-		legends.setIsResizable(false);
-		legends.setIsMovable(false);
-
-		// Shop
-		Label l1 = new Label(screen, UIDUtil.getUID(), screen.getStyle("LegendLabel").getVector2f("defaultSize"),
-				screen.getStyle("LegendLabel").getVector4f("resizeBorders"), screen.getStyle("LegendLabel").getString("shopImg"));
-		legends.addChild(l1);
-		Label t1 = new Label(screen);
-		t1.setText("Shop");
-		legends.addChild(t1);
-		CheckBox c1 = new CheckBox(screen);
-		legends.addChild(c1);
-
-		// Quest Givers
-		Label l2 = new Label(screen, UIDUtil.getUID(), screen.getStyle("LegendLabel").getVector2f("defaultSize"),
-				screen.getStyle("LegendLabel").getVector4f("resizeBorders"),
-				screen.getStyle("LegendLabel").getString("questGiverImg"));
-		legends.addChild(l2);
-		Label t2 = new Label(screen);
-		t2.setText("Quest Givers");
-		legends.addChild(t2);
-		CheckBox c2 = new CheckBox(screen);
-		legends.addChild(c2);
-
-		// Party Member
-		Label l3 = new Label(screen, UIDUtil.getUID(), screen.getStyle("LegendLabel").getVector2f("defaultSize"),
-				screen.getStyle("LegendLabel").getVector4f("resizeBorders"),
-				screen.getStyle("LegendLabel").getString("partyMemberImg"));
-		legends.addChild(l3);
-		Label t3 = new Label(screen);
-		t3.setText("Party Members");
-		legends.addChild(t3);
-		CheckBox c3 = new CheckBox(screen);
-		legends.addChild(c3);
-
-		//
-		screen.addElement(legends);
+		if (legends == null) {
+			legends = new LegendPanel(screen);
+			screen.addElement(legends);
+		}
+		legends.show();
 		positionLegends();
-
-	}
-
-	private void playOpenSound() {
-		((Screen) screen).playAudioNode(Constants.SOUND_MAP_OPEN, 1);
 	}
 
 	private void checkAvailable() {
-		zoomIn.setIsEnabled(mapNumber > 0);
-		zoomOut.setIsEnabled(mapNumber < getMaps().size() - 1);
+		zoomIn.setEnabled(mapNumber > 0);
+		zoomOut.setEnabled(mapNumber < getMaps().size() - 1);
+	}
+
+	class LegendPanel extends Panel implements AutoHide {
+		LegendPanel(BaseScreen screen) {
+			super(screen);
+
+			setPriority(ZPriority.POPUP);
+			setLayoutManager(new MigLayout(screen, "wrap 2, gap 1, ins 2", "[shrink 0]4[fill, grow]"));
+			setResizable(false);
+			setMovable(false);
+
+			// Shop
+			addElement(new Label(screen).setStyleClass("icon icon-vendor"));
+			addElement(new CheckBox(screen, "Shop"));
+
+			// Quest Givers
+			addElement(new Label(screen).setStyleClass("icon icon-quest-giver"));
+			addElement(new CheckBox(screen, "Quest Givers"));
+
+			// Party Member
+			addElement(new Label(screen).setStyleClass("icon icon-party"));
+			addElement(new CheckBox(screen, "Party Members"));
+		}
 	}
 }

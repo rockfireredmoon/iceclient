@@ -56,8 +56,7 @@ public class CreatureTweakAppState extends IcemoonAppState<GameAppState> {
 		final CreatureEditorAppState creatureEditorAppState = new CreatureEditorAppState(null, Config.get(),
 				parent.getPropFactory(), parent.getSpawnLoader(), ((Iceclient) app).getAssets(), (Persona) playerNode.getCreature()) {
 			@Override
-			public void stateDetached(AppStateManager stateManager) {
-				super.stateDetached(stateManager);
+			protected void onStateDetached() {
 				stateManager.detach(CreatureTweakAppState.this);
 			}
 		};

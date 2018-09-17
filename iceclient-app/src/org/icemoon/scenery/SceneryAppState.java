@@ -18,6 +18,7 @@ import org.icenet.client.Spawn;
 import org.icescene.IcesceneApp;
 import org.icescene.NodeVisitor;
 import org.icescene.SceneConstants;
+import org.icescene.NodeVisitor.VisitResult;
 import org.icescene.camera.PlayerLocationAppState;
 import org.icescene.props.AbstractProp;
 import org.iceui.IceUI;
@@ -172,11 +173,12 @@ public class SceneryAppState extends AbstractTileLoadingAppState<GameAppState, S
 		}
 		sceneryNode.removeFromParent();
 		new NodeVisitor(sceneryNode).visit(new NodeVisitor.Visit() {
-			public void visit(Spatial node) {
+			public VisitResult visit(Spatial node) {
 				if (node instanceof AudioNode) {
 					((AudioNode) node).stop();
 					((AudioNode) node).removeFromParent();
 				}
+				return VisitResult.CONTINUE;
 			}
 		});
 	}
@@ -202,10 +204,11 @@ public class SceneryAppState extends AbstractTileLoadingAppState<GameAppState, S
 
 	private void reconfigureAudio() {
 		new NodeVisitor(sceneryNode).visit(new NodeVisitor.Visit() {
-			public void visit(Spatial node) {
+			public VisitResult visit(Spatial node) {
 				if (node instanceof AudioNode) {
 					((AudioNode) node).setVolume(audio.getActualAmbientVolume());
 				}
+				return VisitResult.CONTINUE;
 			}
 		});
 	}

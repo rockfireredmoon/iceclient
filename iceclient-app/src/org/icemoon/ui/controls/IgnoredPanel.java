@@ -1,12 +1,12 @@
 package org.icemoon.ui.controls;
 
 import org.iceui.controls.ElementStyle;
-import org.iceui.controls.SelectableItem;
 
 import com.jme3.font.BitmapFont;
 
+import icetone.controls.buttons.SelectableItem;
 import icetone.controls.text.Label;
-import icetone.core.ElementManager;
+import icetone.core.BaseScreen;
 import icetone.core.layout.mig.MigLayout;
 
 /**
@@ -15,8 +15,8 @@ import icetone.core.layout.mig.MigLayout;
 public class IgnoredPanel extends SelectableItem  {
 
     private final String character;
-    public IgnoredPanel(ElementManager screen, String character) {
-        super(screen, "Ignore" + character);
+    public IgnoredPanel(BaseScreen screen, String character) {
+        super(screen);
         this.character = character;
         setLayoutManager(new MigLayout(screen, "ins 0, wrap 1", "[grow, fill]", "[align top][align bottom]"));
         setIgnoreMouse(true);
@@ -25,8 +25,8 @@ public class IgnoredPanel extends SelectableItem  {
         Label nameLabel = new Label(screen);
         nameLabel.setTextVAlign(BitmapFont.VAlign.Top);
         nameLabel.setText(character);
-        ElementStyle.normal(screen, nameLabel, true, false);
-        addChild(nameLabel);
+        ElementStyle.normal(nameLabel, true, false);
+        addElement(nameLabel);
     }
     
     public String getCharacter() {

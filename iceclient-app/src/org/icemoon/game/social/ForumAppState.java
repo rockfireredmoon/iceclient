@@ -17,76 +17,56 @@ import org.icenet.client.ForumPost;
 import org.icenet.client.ForumTopic;
 import org.icescene.IcemoonAppState;
 import org.icescene.IcesceneApp;
-import org.iceui.HPosition;
-import org.iceui.VPosition;
-import org.iceui.controls.FancyButton;
-import org.iceui.controls.FancyPersistentWindow;
-import org.iceui.controls.FancyWindow;
-import org.iceui.controls.SaveType;
-import org.iceui.controls.ZMenu;
 import org.xhtmlrenderer.simple.xhtml.XhtmlNamespaceHandler;
 import org.xhtmlrenderer.swing.NaiveUserAgent;
 
 import com.jme3.app.state.AppStateManager;
-import com.jme3.input.event.MouseButtonEvent;
-import com.jme3.math.Vector2f;
+import com.jme3.font.BitmapFont.Align;
+import com.jme3.font.BitmapFont.VAlign;
 import com.jme3.math.Vector4f;
 
-import icetone.controls.extras.SplitPanel;
-import icetone.controls.lists.Table;
-import icetone.controls.lists.Table.ColumnResizeMode;
-import icetone.controls.lists.Table.TableColumn;
+import icetone.controls.buttons.PushButton;
+import icetone.controls.containers.SplitPanel;
+import icetone.controls.menuing.Menu;
+import icetone.controls.table.Table;
+import icetone.controls.table.Table.ColumnResizeMode;
+import icetone.controls.table.TableColumn;
+import icetone.controls.table.TableRow;
 import icetone.controls.text.Label;
-import icetone.core.Container;
-import icetone.core.Element;
-import icetone.core.ElementManager;
-import icetone.core.Element.Orientation;
+import icetone.core.BaseElement;
+import icetone.core.BaseScreen;
+import icetone.core.Orientation;
+import icetone.core.Size;
+import icetone.core.StyledContainer;
+import icetone.core.event.MouseUIButtonEvent;
 import icetone.core.layout.FillLayout;
-import icetone.core.layout.LUtil;
 import icetone.core.layout.mig.MigLayout;
-import icetone.listeners.MouseButtonListener;
-import icetone.xhtml.TGGXHTMLRenderer;
+import icetone.extras.windows.PersistentWindow;
+import icetone.extras.windows.SaveType;
+import icetone.xhtml.XHTMLDisplay;
 
 /**
  * IGF, or In-Game Forum
  */
 public class ForumAppState extends IcemoonAppState<HUDAppState> {
 
-	public final class CategoryTable extends Table implements MouseButtonListener {
+	public final class CategoryTable extends Table {
 		private boolean doubleClick;
 		private TableRow lastSel;
 
-		public CategoryTable(ElementManager screen) {
+		public CategoryTable(BaseScreen screen) {
 			super(screen);
-		}
-
-		@Override
-		public void onMouseLeftReleased(MouseButtonEvent evt) {
-			TableRow selectedRow = getSelectedRow();
-			doubleClick = LUtil.isDoubleClick(evt) && Objects.equals(selectedRow, lastSel);
-			lastSel = selectedRow;
-		}
-
-		@Override
-		public void onMouseRightReleased(MouseButtonEvent evt) {
-			ZMenu m = new ZMenu(screen) {
-				@Override
-				protected void onItemSelected(ZMenuItem item) {
-				}
-			};
-			if (category == null && isAnythingSelected() && (ForumItem) getSelectedRow().getValue() != null) {
-				m.addMenuItem("New Topic", ForumActions.NEW_THREAD);
-			} else if (category != null && isAnythingSelected() && (ForumItem) getSelectedRow().getValue() != null) {
-				m.addMenuItem("Reply To Topic", ForumActions.REPLY_TO_THREAD);
-			}
-			screen.addElement(m);
-			m.showMenu(null, evt.getX() + 10, evt.getY() + 10);
-		}
-
-		@Override
-		public void onChange() {
-			if (doubleClick) {
+			onMousePressed(evt -> {
 				TableRow selectedRow = getSelectedRow();
+				doubleClick = evt.getClicks() == 2 && Objects.equals(selectedRow, lastSel);
+				lastSel = selectedRow;
+			}, MouseUIButtonEvent.LEFT);
+			onMouseReleased(evt -> {
+
+				TableRow selectedRow = getSelectedRow();
+				doubleClick = evt.getClicks() == 2 && Objects.equals(selectedRow, lastSel);
+				lastSel = selectedRow;
+
 				if (category == null) {
 					category = (ForumItem) selectedRow.getValue();
 					loadCategoriesInBackground();
@@ -100,16 +80,24 @@ public class ForumAppState extends IcemoonAppState<HUDAppState> {
 						loadTopicInBackground();
 					}
 				}
-			}
+			}, MouseUIButtonEvent.LEFT);
+			onMouseReleased(evt -> {
+				Menu<ForumActions> m = new Menu<>(screen);
+				if (category == null && isAnythingSelected() && (ForumItem) getSelectedRow().getValue() != null) {
+					m.addMenuItem("New Topic", ForumActions.NEW_THREAD);
+				} else if (category != null && isAnythingSelected()
+						&& (ForumItem) getSelectedRow().getValue() != null) {
+					m.addMenuItem("Reply To Topic", ForumActions.REPLY_TO_THREAD);
+				}
+				screen.addElement(m);
+				m.showMenu(null, evt.getX() + 10, evt.getY() + 10);
+			}, MouseUIButtonEvent.RIGHT);
 		}
 
-		@Override
-		public void onMouseLeftPressed(MouseButtonEvent evt) {
+		public boolean isDoubleClick() {
+			return doubleClick;
 		}
 
-		@Override
-		public void onMouseRightPressed(MouseButtonEvent evt) {
-		}
 	}
 
 	public enum ForumActions {
@@ -119,11 +107,11 @@ public class ForumAppState extends IcemoonAppState<HUDAppState> {
 	private final static Logger LOG = Logger.getLogger(ForumAppState.class.getName());
 	private NetworkAppState network;
 
-	private FancyPersistentWindow forum;
+	private PersistentWindow forum;
 	private Table categories;
 	private ForumItem category;
 	private ForumTopic topic;
-	private TGGXHTMLRenderer viewer;
+	private XHTMLDisplay viewer;
 	private Label viewerInfoSummary;
 
 	public ForumAppState() {
@@ -141,8 +129,7 @@ public class ForumAppState extends IcemoonAppState<HUDAppState> {
 		network = stateManager.getState(NetworkAppState.class);
 
 		// Forum window
-		forum = new FancyPersistentWindow(screen, Config.FORUM, screen.getStyle("Common").getInt("defaultWindowOffset"),
-				VPosition.MIDDLE, HPosition.CENTER, new Vector2f(500, 400), FancyWindow.Size.SMALL, true,
+		forum = new PersistentWindow(screen, Config.FORUM, VAlign.Center, Align.Center, new Size(500, 400), true,
 				SaveType.POSITION_AND_SIZE, Config.get()) {
 			@Override
 			protected void onCloseWindow() {
@@ -151,31 +138,27 @@ public class ForumAppState extends IcemoonAppState<HUDAppState> {
 			}
 		};
 		forum.setWindowTitle("In-Game Forum");
-		forum.setIsMovable(true);
-		forum.setIsResizable(true);
+		forum.setMovable(true);
+		forum.setResizable(true);
 		forum.setDestroyOnHide(true);
 
 		// Category actions
-		Container categoryActions = new Container(screen);
+		StyledContainer categoryActions = new StyledContainer(screen);
 		categoryActions.setLayoutManager(new MigLayout(screen, "ins 0", "push[][]push", "[]"));
-		FancyButton newCategoryOrThread = new FancyButton(screen) {
-
-			@Override
-			public void onButtonMouseLeftUp(MouseButtonEvent evt, boolean toggled) {
+		PushButton newCategoryOrThread = new PushButton(screen) {
+			{
+				setStyleClass("fancy");
 			}
-
 		};
 		newCategoryOrThread.setText("New");
-		categoryActions.addChild(newCategoryOrThread);
-		FancyButton backToIndex = new FancyButton(screen) {
-
-			@Override
-			public void onButtonMouseLeftUp(MouseButtonEvent evt, boolean toggled) {
+		categoryActions.addElement(newCategoryOrThread);
+		PushButton backToIndex = new PushButton(screen) {
+			{
+				setStyleClass("fancy");
 			}
-
 		};
 		backToIndex.setText("Reply");
-		categoryActions.addChild(backToIndex);
+		categoryActions.addElement(backToIndex);
 
 		// Categories
 		categories = new CategoryTable(screen);
@@ -183,117 +166,114 @@ public class ForumAppState extends IcemoonAppState<HUDAppState> {
 		categories.setColumnResizeMode(ColumnResizeMode.AUTO_FIRST);
 		categories.addColumn("Category").setWidth(140);
 		TableColumn lastCol = categories.addColumn("Last");
-		lastCol.setMinDimensions(new Vector2f(20, 10));
+		lastCol.setMinDimensions(new Size(20, 10));
 		lastCol.setWidth(50);
 
 		// Categories area
-		Container categoriesArea = new Container(screen);
-		categoriesArea.setMinDimensions(Vector2f.ZERO);
+		StyledContainer categoriesArea = new StyledContainer(screen);
+		categoriesArea.setMinDimensions(Size.ZERO);
 		categoriesArea.setLayoutManager(new MigLayout(screen, "ins 0, wrap 1", "[fill, grow]", "[][fill, grow]"));
-		categoriesArea.addChild(categoryActions);
-		categoriesArea.addChild(categories);
+		categoriesArea.addElement(categoryActions);
+		categoriesArea.addElement(categories);
 
 		// Viewer nav
-		Container viewerNav = new Container(screen);
+		StyledContainer viewerNav = new StyledContainer(screen);
 		viewerNav.setLayoutManager(new MigLayout(screen, "ins 0, fill", "push[][][][][][]push", "[]"));
 
 		// First
-		FancyButton first = new FancyButton(screen) {
-			@Override
-			public void onButtonMouseLeftUp(MouseButtonEvent evt, boolean toggled) {
+		PushButton first = new PushButton(screen) {
+			{
+				setStyleClass("fancy");
 			}
 		};
-		Vector2f arrowSize = screen.getStyle("Common").getVector2f("arrowSize");
 		first.setToolTipText("First Page");
-		first.setButtonIcon(arrowSize.x, arrowSize.y, screen.getStyle("Common").getString("arrowLeftStart"));
-		viewerNav.addChild(first);
+		first.getButtonIcon().setStyleClass("icon icon-start");
+		viewerNav.addElement(first);
 
 		// Previous
-		FancyButton previous = new FancyButton(screen) {
-			@Override
-			public void onButtonMouseLeftUp(MouseButtonEvent evt, boolean toggled) {
+		PushButton previous = new PushButton(screen) {
+			{
+				setStyleClass("fancy");
 			}
 		};
 		previous.setToolTipText("Previous Page");
-		previous.setButtonIcon(arrowSize.x, arrowSize.y, screen.getStyle("Common").getString("arrowLeft"));
-		viewerNav.addChild(previous);
+		first.getButtonIcon().setStyleClass("icon icon-back");
+		viewerNav.addElement(previous);
 
 		// Next
-		FancyButton next = new FancyButton(screen) {
-			@Override
-			public void onButtonMouseLeftUp(MouseButtonEvent evt, boolean toggled) {
+		PushButton next = new PushButton(screen) {
+			{
+				setStyleClass("fancy");
 			}
 		};
 		next.setToolTipText("Next Page");
-		next.setButtonIcon(arrowSize.x, arrowSize.y, screen.getStyle("Common").getString("arrowRight"));
-		viewerNav.addChild(next);
+		first.getButtonIcon().setStyleClass("icon icon-forward");
+		viewerNav.addElement(next);
 
 		// Last
-		FancyButton last = new FancyButton(screen) {
-			@Override
-			public void onButtonMouseLeftUp(MouseButtonEvent evt, boolean toggled) {
+		PushButton last = new PushButton(screen) {
+			{
+				setStyleClass("fancy");
 			}
 		};
 		last.setToolTipText("Last Page");
-		last.setButtonIcon(arrowSize.x, arrowSize.y, screen.getStyle("Common").getString("arrowRightStart"));
-		viewerNav.addChild(last);
+		first.getButtonIcon().setStyleClass("icon icon-end");
+		viewerNav.addElement(last);
 
 		// Home
-		FancyButton home = new FancyButton(screen) {
-			@Override
-			public void onButtonMouseLeftUp(MouseButtonEvent evt, boolean toggled) {
-				viewer.scrollToTop();
+		PushButton home = new PushButton(screen) {
+			{
+				setStyleClass("fancy");
 			}
 		};
+		home.onMouseReleased(evt -> viewer.scrollToTop());
 		home.setToolTipText("Top Of Page");
-		home.setButtonIcon(arrowSize.x, arrowSize.y, screen.getStyle("Common").getString("arrowUp"));
-		viewerNav.addChild(home);
+		first.getButtonIcon().setStyleClass("icon icon-up");
+		viewerNav.addElement(home);
 		// Home
-		FancyButton end = new FancyButton(screen) {
-			@Override
-			public void onButtonMouseLeftUp(MouseButtonEvent evt, boolean toggled) {
-				viewer.scrollToBottom();
+		PushButton end = new PushButton(screen) {
+			{
+				setStyleClass("fancy");
 			}
 		};
+		end.onMouseReleased(evt -> viewer.scrollToBottom());
 		end.setToolTipText("Bottom Of Page");
-		end.setButtonIcon(arrowSize.x, arrowSize.y, screen.getStyle("Common").getString("arrowDown"));
-		viewerNav.addChild(end);
+		first.getButtonIcon().setStyleClass("icon icon-down");
+		viewerNav.addElement(end);
 
 		// Viewer
-		viewer = new TGGXHTMLRenderer(screen, new NaiveUserAgent());
+		viewer = new XHTMLDisplay(screen, new NaiveUserAgent());
 		// viewer.setContentIndents(Vector4f.ZERO);
 
 		// Viewer Info
-		Container viewerInfo = new Container(screen);
+		StyledContainer viewerInfo = new StyledContainer(screen);
 		viewerInfo.setLayoutManager(new MigLayout(screen, "ins 0", "push[]push", "[]"));
 		viewerInfoSummary = new Label(screen);
 		viewerInfoSummary.setText("");
-		viewerInfo.addChild(viewerInfoSummary);
+		viewerInfo.addElement(viewerInfoSummary);
 
 		// Viewer area
-		Container viewerArea = new Container(screen);
-		viewerArea.setMinDimensions(Vector2f.ZERO);
-		viewerArea
-				.setLayoutManager(new MigLayout(screen, "ins 0, wrap 1, fill", "[grow, fill]", "[shrink 0][grow, fill][shrink 0]"));
-		viewerArea.addChild(viewerInfo);
-		viewerArea.addChild(viewer);
-		viewerArea.addChild(viewerNav);
+		StyledContainer viewerArea = new StyledContainer(screen);
+		viewerArea.setMinDimensions(Size.ZERO);
+		viewerArea.setLayoutManager(
+				new MigLayout(screen, "ins 0, wrap 1, fill", "[grow, fill]", "[shrink 0][grow, fill][shrink 0]"));
+		viewerArea.addElement(viewerInfo);
+		viewerArea.addElement(viewer);
+		viewerArea.addElement(viewerNav);
 
 		// Split
-		SplitPanel split = new SplitPanel(screen, Vector2f.ZERO, LUtil.LAYOUT_SIZE, Vector4f.ZERO, null, Orientation.HORIZONTAL);
+		SplitPanel split = new SplitPanel(screen, Orientation.HORIZONTAL);
 		split.setDefaultDividerLocationRatio(0.25f);
 		split.setLeftOrTop(categoriesArea);
 		split.setRightOrBottom(viewerArea);
 
 		// Window content
-		final Element contentArea = forum.getContentArea();
+		final BaseElement contentArea = forum.getContentArea();
 		contentArea.setLayoutManager(new FillLayout());
-		contentArea.addChild(split);
+		contentArea.addElement(split);
 
 		// Show with an effect and sound
-		screen.addElement(forum);
-		forum.hide();
-		forum.showWithEffect();
+		screen.showElement(forum);
 
 		// Load initial categories / posts
 		loadCategoriesInBackground();
@@ -309,8 +289,8 @@ public class ForumAppState extends IcemoonAppState<HUDAppState> {
 
 	@Override
 	protected void onCleanup() {
-		if (forum.getIsVisible()) {
-			forum.hideWithEffect();
+		if (forum.isVisible()) {
+			forum.hide();
 		}
 	}
 
@@ -349,9 +329,11 @@ public class ForumAppState extends IcemoonAppState<HUDAppState> {
 					bui.append("<hr/>\n");
 				}
 				bui.append("<div class=\"authorLine\">");
-				bui.append(String.format("%s [Post #%d] (%s) %s ago", post.getAuthor(), post.getNumber(),
-						DateFormat.getDateTimeInstance(DateFormat.SHORT, DateFormat.SHORT).format(new Date(post.getDate())),
-						formatTime(System.currentTimeMillis() - post.getDate())));
+				bui.append(
+						String.format("%s [Post #%d] (%s) %s ago", post.getAuthor(), post.getNumber(),
+								DateFormat.getDateTimeInstance(DateFormat.SHORT, DateFormat.SHORT)
+										.format(new Date(post.getDate())),
+								formatTime(System.currentTimeMillis() - post.getDate())));
 				bui.append("</div>\n");
 				if (post.getEdits() > 0) {
 					bui.append("<div class=\"editLine\">");
@@ -371,8 +353,8 @@ public class ForumAppState extends IcemoonAppState<HUDAppState> {
 			app.enqueue(new Callable<Void>() {
 				public Void call() throws Exception {
 
-					viewerInfoSummary.setText(
-							String.format("%s (ID#%d) with %d post. Viewing %d to %d", topic.getTitle(), topic.getId(), 1, 1, 1));
+					viewerInfoSummary.setText(String.format("%s (ID#%d) with %d post. Viewing %d to %d",
+							topic.getTitle(), topic.getId(), 1, 1, 1));
 					viewer.setDocumentFromString(bui.toString(), null, new XhtmlNamespaceHandler());
 					return null;
 				}
@@ -419,7 +401,7 @@ public class ForumAppState extends IcemoonAppState<HUDAppState> {
 					public Void call() throws Exception {
 						categories.removeAllRows();
 						for (ForumItem cat : forumCategories) {
-							Table.TableRow row = new Table.TableRow(screen, categories, cat);
+							TableRow row = new TableRow(screen, categories, cat);
 							row.addCell(cat.getTitle(), cat.getTitle());
 							Date date = new Date(cat.getDate());
 							row.addCell(formatTime(cat.getDate()), date);
@@ -434,13 +416,13 @@ public class ForumAppState extends IcemoonAppState<HUDAppState> {
 					public Void call() throws Exception {
 						categories.removeAllRows();
 
-						Table.TableRow row = new Table.TableRow(screen, categories, ForumActions.UP);
+						TableRow row = new TableRow(screen, categories, ForumActions.UP);
 						row.addCell("..", null);
 						row.addCell("", null);
 						categories.addRow(row);
 
 						for (ForumTopic topic : forumTopics) {
-							row = new Table.TableRow(screen, categories, topic);
+							row = new TableRow(screen, categories, topic);
 							row.addCell(topic.getTitle(), topic.getTitle());
 							Date date = new Date(topic.getDate());
 							row.addCell(formatTime(System.currentTimeMillis() - topic.getDate()), date);

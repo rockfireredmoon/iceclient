@@ -14,32 +14,27 @@ import org.icelib.Icelib;
 import org.icemoon.Iceclient;
 import org.icemoon.network.NetworkAppState;
 import org.icenet.client.GameServer;
-import org.icescene.IcesceneApp;
 import org.iceui.UIConstants;
-import org.iceui.controls.BigButton;
-import org.iceui.controls.BusySpinner;
 import org.iceui.controls.ElementStyle;
-import org.iceui.controls.FancyWindow;
-import org.iceui.controls.FancyWindow.Size;
-import org.iceui.controls.XScreen;
-import org.iceui.effects.EffectHelper;
 
 import com.jme3.app.Application;
 import com.jme3.app.state.AbstractAppState;
 import com.jme3.app.state.AppStateManager;
-import com.jme3.input.event.MouseButtonEvent;
-import com.jme3.math.Vector2f;
-import com.jme3.math.Vector4f;
 import com.jme3.texture.Texture2D;
 
+import icetone.controls.buttons.PushButton;
+import icetone.controls.containers.Frame;
 import icetone.controls.text.Label;
-import icetone.core.Container;
+import icetone.core.BaseElement;
+import icetone.core.BaseScreen;
 import icetone.core.Element;
-import icetone.core.Element.ZPriority;
-import icetone.core.layout.LUtil;
+import icetone.core.Layout.LayoutType;
+import icetone.core.StyledContainer;
+import icetone.core.ZPriority;
+import icetone.core.event.ScreenEvent;
+import icetone.core.event.ScreenEventListener;
 import icetone.core.layout.mig.MigLayout;
-import icetone.core.utils.UIDUtil;
-import icetone.effects.Effect;
+import icetone.extras.controls.BusySpinner;
 
 public abstract class AbstractIntroAppState extends AbstractAppState {
 
@@ -47,14 +42,13 @@ public abstract class AbstractIntroAppState extends AbstractAppState {
 	private final static Logger LOG = Logger.getLogger(AbstractIntroAppState.class.getName());
 	private Label versionText;
 	private Element banner;
-	private IcesceneApp.AppListener listener;
-	private EffectHelper effectHelper = new EffectHelper();
+	private ScreenEventListener listener;
 	private Element layer;
 	private Element logo;
 
-	protected FancyWindow contentWindow;
+	protected Frame contentWindow;
 	protected Iceclient app;
-	protected XScreen screen;
+	protected BaseScreen screen;
 	protected GameServer gameServer;
 
 	@Override
@@ -67,21 +61,30 @@ public abstract class AbstractIntroAppState extends AbstractAppState {
 
 		// Layer for this appstate
 		layer = new Element(screen);
+		layer.setStyleId("intro-layer");
 		layer.setAsContainerOnly();
-		layer.setLayoutManager(new MigLayout(screen, "fill, wrap 1", "[al center]", "push[260:260:]push[]push[shrink 0]"));
+		layer.setLayoutManager(
+				new MigLayout(screen, "fill, wrap 1", "[al center]", "push[260:260:]push[]push[shrink 0]"));
 
-		this.app.addListener(listener = new IcesceneApp.AppListener() {
+		screen.addScreenListener(listener = new ScreenEventListener() {
+
 			@Override
-			public void reshape(int w, int h) {
+			public void onScreenEvent(ScreenEvent evt) {
 				LOG.info("User reshaped window");
 				AbstractIntroAppState.this.app.reloadBackgroundPicture();
+
 			}
 		});
 
 		// Login window
-		contentWindow = new FancyWindow(screen, Size.LARGE, false);
-		contentWindow.setIsMovable(false);
-		contentWindow.setIsResizable(false);
+		contentWindow = new Frame(screen, false) {
+			{
+				setStyleClass("large");
+			}
+		};
+		contentWindow.setStyleId("login-window");
+		contentWindow.setMovable(false);
+		// contentWindow.setIsResizable(false);
 		contentWindow.setTitle(getTitle());
 		contentWindow.setManagedHint(false);
 		createWindowForState();
@@ -89,46 +92,37 @@ public abstract class AbstractIntroAppState extends AbstractAppState {
 
 		// Version text
 		versionText = new Label(screen);
-		ElementStyle.normal(screen, versionText, false, false, true);
+		ElementStyle.normal(versionText, false, false, true);
 		versionText.setText(String.format("%s %s", AppInfo.getName(), AppInfo.getVersion()));
 
 		// Banner (750x106)
-		banner = new Element(screen, UIDUtil.getUID(), Vector2f.ZERO, LUtil.LAYOUT_SIZE, Vector4f.ZERO, null);
+		banner = new Element(screen);
+		banner.addStyleClass("banner");
 
 		// Logo
-		logo = new Element(screen, UIDUtil.getUID(), Vector2f.ZERO, LUtil.LAYOUT_SIZE, Vector4f.ZERO,
-				screen.getStyle("LoginWindow").getString("logoImg"));
+		logo = new Element(screen);
+		logo.addStyleClass("logo");
 
 		// Exit Button
-		BigButton exit = new BigButton(this.app.getScreen()) {
-			@Override
-			public void onButtonMouseLeftUp(MouseButtonEvent evt, boolean toggled) {
-				app.stop();
+		PushButton exit = new PushButton(this.app.getScreen()) {
+			{
+				setStyleClass("big cancel");
 			}
 		};
+		exit.onMouseReleased(evt -> app.stop());
 		exit.setText("Exit");
 
 		// Bottom (version and exit button)
-		Container c = new Container(screen);
+		StyledContainer c = new StyledContainer(screen);
 		c.setLayoutManager(new MigLayout(screen, "fill", "[:33%:, al left][:33%:, al center][:33%:, al right]"));
-		c.addChild(logo);
-		c.addChild(versionText);
-		c.addChild(exit);
+		c.addElement(logo);
+		c.addElement(versionText);
+		c.addElement(exit);
 
 		// Add to scene
-		layer.addChild(banner);
-		layer.addChild(contentWindow);
-		layer.addChild(c, "growx");
-
-		//
-		// loginWindow.getEffect(Effect.EffectEvent.Hide).setDestroyOnHide(true);
-		// infoPanel.getEffect(Effect.EffectEvent.Hide).setDestroyOnHide(true);
-		// banner.getEffect(Effect.EffectEvent.Hide).setDestroyOnHide(true);
-
-		//
-
-		effectHelper.reveal(contentWindow, Effect.EffectType.FadeIn, null);
-		effectHelper.reveal(banner, Effect.EffectType.FadeIn, null);
+		layer.showElement(banner);
+		layer.showElement(contentWindow);
+		layer.addElement(c, "growx");
 
 		/*
 		 * Background picture. Load the game servers specific image if we have
@@ -150,12 +144,12 @@ public abstract class AbstractIntroAppState extends AbstractAppState {
 				loadServerBackground(gameServer);
 			}
 		} else {
-//			this.app.setBackgroundPicture(screen.getStyle("Common").getString("loginBackground"));
-//			setDefaultBanner();
+			// this.app.setBackgroundPicture(screen.getStyle("Common").getString("loginBackground"));
+			// setDefaultBanner();
 		}
 
 		// Add to and set up screen
-		this.app.getLayers(ZPriority.NORMAL).addChild(layer);
+		this.app.getLayers(ZPriority.NORMAL).addElement(layer);
 
 		// Close the splash screen now if one exists
 		final SplashScreen splash = SplashScreen.getSplashScreen();
@@ -178,7 +172,9 @@ public abstract class AbstractIntroAppState extends AbstractAppState {
 					app.enqueue(new Callable<Void>() {
 						@Override
 						public Void call() throws Exception {
-							app.setBackgroundPicture(screen.getStyle("Common").getString("loginBackground"));
+							Element el = new Element(screen);
+							el.setStyleId("intro-background");
+							app.setBackgroundPicture((Texture2D) el.getElementTexture());
 							return null;
 						}
 					});
@@ -194,13 +190,14 @@ public abstract class AbstractIntroAppState extends AbstractAppState {
 			loc = srv.getAssetUrl();
 		loc = Icelib.removeTrailingSlashes(loc);
 		URL url = new URL(loc + "/bg.jpg");
-		String cacheName = srv.getName();
+		String cacheName = srv.getName() + "bg";
 		try {
 			app.loadExternalBackground(url, cacheName, true, onlyIfCached);
 		} catch (IOException ioe) {
 			queueSetDefaultBanner();
 			throw ioe;
 		}
+		banner.hide();
 
 		url = new URL(loc + "/logo.png");
 		cacheName = "logo_" + srv.getName();
@@ -210,6 +207,10 @@ public abstract class AbstractIntroAppState extends AbstractAppState {
 				@Override
 				public Void call() throws Exception {
 					banner.setTexture(tex);
+					banner.sizeToContent();
+					layer.dirtyParent(true, LayoutType.boundsChange());
+					layer.layoutChildren();
+					banner.show();
 					return null;
 				}
 			});
@@ -233,24 +234,20 @@ public abstract class AbstractIntroAppState extends AbstractAppState {
 
 	@Override
 	public void cleanup() {
-		app.removeListener(listener);
-//		app.removeBackgroundPicture();
-
-		effectHelper.destroy(versionText, Effect.EffectType.FadeOut);
-		effectHelper.destroy(banner, Effect.EffectType.FadeOut);
-		effectHelper.destroy(contentWindow, Effect.EffectType.FadeOut);
+		screen.removeScreenListener(listener);
+		// app.removeBackgroundPicture();
 
 		try {
 			app.getAlarm().timed(new Callable<Void>() {
 				@Override
 				public Void call() throws Exception {
-					app.getLayers(ZPriority.NORMAL).removeChild(layer);
+					app.getLayers(ZPriority.NORMAL).removeElement(layer);
 					return null;
 				}
 			}, UIConstants.UI_EFFECT_TIME + 0.1f);
 		} catch (RejectedExecutionException ree) {
 			// Happens on shutdown
-			app.getLayers(ZPriority.NORMAL).removeChild(layer);
+			app.getLayers(ZPriority.NORMAL).removeElement(layer);
 		}
 
 	}
@@ -261,20 +258,20 @@ public abstract class AbstractIntroAppState extends AbstractAppState {
 	public void onEndScreen() {
 	}
 
+	protected void setDefaultBanner() {
+		banner.clearUserStyles();
+	}
+
 	protected abstract void createWindowForState();
 
 	protected void createBusyWindow(String text) {
-		Element contentArea = contentWindow.getContentArea();
+		BaseElement contentArea = contentWindow.getContentArea();
 		contentArea.removeAllChildren();
 		final MigLayout layout = new MigLayout(screen, "fill", "push[][]push", "push[]push"); // NOI18N
 		contentArea.setLayoutManager(layout);
 		final BusySpinner busySpinner = new BusySpinner(screen);
-		busySpinner.setSpeed(UIConstants.SPINNER_SPEED);
-		contentArea.addChild(busySpinner);
-		contentArea.addChild(new Label(text, screen));
-	}
-
-	private void setDefaultBanner() {
-		banner.setTexture(app.getAssetManager().loadTexture(screen.getStyle("LoginWindow").getString("bannerImg")));
+		busySpinner.setSpeed(BusySpinner.DEFAULT_SPINNER_SPEED);
+		contentArea.addElement(busySpinner);
+		contentArea.addElement(new Label(text, screen));
 	}
 }

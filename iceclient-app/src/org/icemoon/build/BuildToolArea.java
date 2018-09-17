@@ -10,20 +10,18 @@ import org.icescene.IcesceneApp;
 import org.icescene.SceneConstants;
 import org.icescene.tools.AbstractToolArea;
 import org.icescene.tools.ToolManager;
-import org.iceui.controls.AutocompleteTextField;
-import org.iceui.controls.AutocompleteTextField.AutocompleteItem;
-import org.iceui.controls.AutocompleteTextField.AutocompleteSource;
-import org.iceui.controls.FancyButton;
-
-import com.jme3.input.event.MouseButtonEvent;
-import com.jme3.math.Vector4f;
 
 import icemoon.iceloader.ServerAssetManager;
+import icetone.controls.buttons.PushButton;
+import icetone.controls.text.AutocompleteItem;
+import icetone.controls.text.AutocompleteSource;
+import icetone.controls.text.AutocompleteTextField;
 import icetone.controls.text.Label;
-import icetone.core.Container;
-import icetone.core.ElementManager;
+import icetone.controls.text.ToolTip;
+import icetone.core.BaseElement;
+import icetone.core.BaseScreen;
+import icetone.core.StyledContainer;
 import icetone.core.layout.mig.MigLayout;
-import icetone.core.utils.UIDUtil;
 
 /**
  * Component for the area in game mode that contains all the main tool actions,
@@ -33,31 +31,29 @@ public class BuildToolArea extends AbstractToolArea implements AutocompleteSourc
 
 	private AutocompleteTextField<String> propSearch;
 
-	public BuildToolArea(ToolManager toolMgr, final ElementManager screen) {
-		super(GameHudType.BUILD, toolMgr, screen, "BuildToolBar", "Buildbar", 7);
+	public BuildToolArea(ToolManager toolMgr, final BaseScreen screen) {
+		super(GameHudType.BUILD, toolMgr, screen, "build-toolbar", "Buildbar", 7);
 		//
 		updateBarText();
-		Container el = new Container(screen, UIDUtil.getUID(), mainToolBarStyle.getVector2f("propSearchPosition"),
-				mainToolBarStyle.getVector2f("propSearchSize"), Vector4f.ZERO, null);
+		StyledContainer el = new StyledContainer(screen);
 		el.setLayoutManager(new MigLayout(screen, "", "[][fill, grow][]", "[]"));
 		propSearch = new AutocompleteTextField<String>(screen, this);
-		propSearch.setToolTipText("Type in a partial or full prop name and press Ctrl+Space to list all props matching that name");
-		el.addChild(new Label("Prop: ", screen));
-		el.addChild(propSearch, "ay 50%");
-		FancyButton add = new FancyButton(screen) {
-			@Override
-			public void onButtonMouseLeftUp(MouseButtonEvent evt, boolean toggled) {
-				BuildAppState bas = screen.getApplication().getStateManager().getState(BuildAppState.class);
-				bas.add(propSearch.getText());
+		propSearch.setToolTipText(
+				"Type in a partial or full prop name and press Ctrl+Space to list all props matching that name");
+		el.addElement(new Label("Prop: ", screen));
+		el.addElement(propSearch, "ay 50%");
+		PushButton add = new PushButton(screen) {
+			{
+				setStyleClass("fancy");
 			}
 		};
+		add.onMouseReleased(evt -> {
+			BuildAppState bas = screen.getApplication().getStateManager().getState(BuildAppState.class);
+			bas.add(propSearch.getText());
+		});
 		add.setText("Add");
-		el.addChild(add);
-		container.addChild(el);
-	}
-
-	@Override
-	protected void build() {
+		el.addElement(add);
+		container.addElement(el);
 	}
 
 	@Override
@@ -94,6 +90,11 @@ public class BuildToolArea extends AbstractToolArea implements AutocompleteSourc
 			}
 		}
 		return items;
+	}
+
+	@Override
+	protected BaseElement createInfoToolTip(BaseElement el) {
+		return new ToolTip(screen).setText("Build Mode");
 	}
 
 }

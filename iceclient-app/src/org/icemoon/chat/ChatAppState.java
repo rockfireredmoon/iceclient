@@ -30,40 +30,34 @@ import org.icemoon.game.GameAppState;
 import org.icemoon.game.HUDAppState;
 import org.icemoon.network.NetworkAppState;
 import org.icenet.NetworkException;
+import org.icenet.client.Client;
 import org.icenet.client.ClientListenerAdapter;
 import org.icenet.client.Spawn;
 import org.icescene.HUDMessageAppState;
+import org.icescene.HUDMessageAppState.Channel;
 import org.icescene.IcemoonAppState;
 import org.icescene.IcesceneApp;
 import org.icescene.console.ConsoleAppState;
-import org.icescene.entities.AbstractSpawnEntity;
-import org.icescene.environment.EnvironmentPhase;
 import org.icescene.io.ModifierKeysAppState;
 import org.iceui.ChatChannel;
 import org.iceui.XChatBox;
 import org.iceui.XChatWindow;
 import org.iceui.controls.UIUtil;
-import org.iceui.controls.XScreen;
 
 import com.jme3.app.state.AppStateManager;
-import com.jme3.font.BitmapFont;
-import com.jme3.font.LineWrapMode;
 import com.jme3.input.KeyInput;
 import com.jme3.input.controls.ActionListener;
 import com.jme3.math.ColorRGBA;
 import com.jme3.math.Vector2f;
-import com.jme3.math.Vector3f;
-import com.jme3.renderer.RenderManager;
-import com.jme3.renderer.ViewPort;
-import com.jme3.scene.control.AbstractControl;
 
 import icetone.controls.menuing.Menu;
-import icetone.core.Element;
-import icetone.core.layout.LUtil;
-import icetone.core.utils.UIDUtil;
+import icetone.core.BaseElement;
+import icetone.core.BaseScreen;
+import icetone.core.ToolKit;
+import icetone.core.event.ElementEvent.Type;
+import icetone.extras.util.ExtrasUtil;
 
-public class ChatAppState extends IcemoonAppState<HUDAppState>
-		implements ActionListener, XScreen.BoundsChangeHandler, HUDMessageAppState.Listener {
+public class ChatAppState extends IcemoonAppState<HUDAppState> implements ActionListener, HUDMessageAppState.Listener {
 
 	private final static Logger LOG = Logger.getLogger(ChatAppState.class.getName());
 	private final static String MAPPING_ESCAPE = "Escape";
@@ -71,7 +65,6 @@ public class ChatAppState extends IcemoonAppState<HUDAppState>
 	private XChatWindow chatWindow;
 	private float targetChatOpacity = -1;
 	private float chatOpacity = 0;
-	private boolean inChatWindowBounds;
 	private Map<ChannelType, String> subChannels = new EnumMap<ChannelType, String>(ChannelType.class);
 	private static final String URL_PATTERN = "(http|https|ftp)\\://([a-zA-Z0-9\\.\\-]+(\\:[a-zA-Z0-9\\.&amp;%\\$\\-]+)*@)*((25[0-5]|2[0-4][0-9]|[0-1]{1}[0-9]{2}|[1-9]{1}[0-9]{1}|[1-9])\\.(25[0-5]|2[0-4][0-9]|[0-1]{1}[0-9]{2}|[1-9]{1}[0-9]{1}|[1-9]|0)\\.(25[0-5]|2[0-4][0-9]|[0-1]{1}[0-9]{2}|[1-9]{1}[0-9]{1}|[1-9]|0)\\.(25[0-5]|2[0-4][0-9]|[0-1]{1}[0-9]{2}|[1-9]{1}[0-9]{1}|[0-9])|localhost|([a-zA-Z0-9\\-]+\\.)*[a-zA-Z0-9\\-]+\\.(com|edu|gov|int|mil|net|org|biz|arpa|info|name|pro|aero|coop|museum|[a-zA-Z]{2}))(\\:[0-9]+)*(/($|[a-zA-Z0-9\\.\\,\\?\\'\\\\\\+&amp;%\\$#\\=~_\\-]+))*";
 	private static final Pattern URL_PATTERN_OBJ = Pattern.compile(URL_PATTERN);
@@ -80,35 +73,12 @@ public class ChatAppState extends IcemoonAppState<HUDAppState>
 	private Map<String, ChatBubble> bubbles = new HashMap<String, ChatBubble>();
 	private NetworkAppState network;
 
-	public class ChatBubble {
-
-		private AbstractSpawnEntity entity;
-		private Element bubble;
-		private final String name;
-
-		ChatBubble(String name, Element bubble, AbstractSpawnEntity entity) {
-			this.name = name;
-			this.entity = entity;
-			this.bubble = bubble;
-		}
-
-		private void position() {
-			// Get world position above spawns head
-			Vector3f loc = entity.getSpatial().getWorldTranslation();
-			loc.y += (entity.getBoundingBox().getYExtent() * 2f) + 1f;
-			final Vector3f screenCoordinates = camera.getScreenCoordinates(loc);
-			bubble.setPosition(new Vector2f((int) (screenCoordinates.x - bubble.getWidth() * 0.33f), (int) (screenCoordinates.y)));
-		}
-
-		private void destroy() {
-			bubble.hideWithEffect();
-			bubble.removeControl(bubble.getControl(ChatBubbleTracker.class));
-			bubbles.remove(name);
-		}
+	public ChatAppState() {
+		this(Config.get());
 	}
 
-	public ChatAppState() {
-		super(Config.get());
+	public ChatAppState(Preferences prefs) {
+		super(prefs);
 		addPrefKeyPattern(Config.CHAT + ".*");
 	}
 
@@ -127,8 +97,8 @@ public class ChatAppState extends IcemoonAppState<HUDAppState>
 	}
 
 	@Override
-	public void message(final Level level, final String message, final Exception exception) {
-		enqueueChatMessage(null, null, level.equals(Level.SEVERE) ? ChannelType.ERROR : ChannelType.SYSTEM, message);
+	public void message(final Channel level, final String message, final Exception exception) {
+		enqueueChatMessage(null, null, level.equals(Channel.ERROR) ? ChannelType.ERROR : ChannelType.SYSTEM, message);
 	}
 
 	@Override
@@ -136,26 +106,11 @@ public class ChatAppState extends IcemoonAppState<HUDAppState>
 		network = app.getStateManager().getState(NetworkAppState.class);
 		network.getClient().addListener(listener = new ClientListenerAdapter() {
 			@Override
-			public void chatMessage(final String sender, final String recipient, final ChannelType channel, final String text) {
+			public void chatMessage(final String sender, final String recipient, final ChannelType channel,
+					final String text) {
 				enqueueChatMessage(sender, recipient, channel, text);
 			}
 
-			public void environmentChange(float duration, String name, EnvironmentPhase type) {
-				switch (type) {
-				case SUNRISE:
-					enqueueChatMessage("System", null, ChannelType.SYSTEM, "Dawn breaks ..");
-					break;
-				case DAY:
-					enqueueChatMessage("System", null, ChannelType.SYSTEM, "A new day starts ..");
-					break;
-				case SUNSET:
-					enqueueChatMessage("System", null, ChannelType.SYSTEM, "The sun sets over gaia ..");
-					break;
-				case NIGHT:
-					enqueueChatMessage("System", null, ChannelType.SYSTEM, "Night falls ..");
-					break;
-				}
-			}
 		});
 
 		app.getStateManager().getState(HUDMessageAppState.class).addListener(this);
@@ -172,8 +127,7 @@ public class ChatAppState extends IcemoonAppState<HUDAppState>
 		if (network.getClient() != null) {
 			network.getClient().removeListener(listener);
 		}
-		((XScreen) app.getScreen()).removeBoundsChangeHandler(this);
-		app.getScreen().removeElement(chatWindow);
+		((BaseScreen) app.getScreen()).removeElement(chatWindow);
 		app.getStateManager().getState(HUDMessageAppState.class).removeListener(this);
 		app.getKeyMapManager().deleteMapping(MAPPING_TOGGLE_CHAT);
 		app.getKeyMapManager().removeListener(this);
@@ -187,7 +141,8 @@ public class ChatAppState extends IcemoonAppState<HUDAppState>
 		return chatWindow.isInputFocussed();
 	}
 
-	public void enqueueChatMessage(final String sender, final String recipient, final ChannelType channel, final String text) {
+	public void enqueueChatMessage(final String sender, final String recipient, final ChannelType channel,
+			final String text) {
 		app.enqueue(new Callable<Void>() {
 			public Void call() throws Exception {
 				// Appstate may now longer be valid
@@ -198,33 +153,20 @@ public class ChatAppState extends IcemoonAppState<HUDAppState>
 
 				// Clear out speech bubble
 				if (bubbles.containsKey(sender)) {
-					bubbles.get(sender).destroy();
+					bubbles.get(sender).hide();
 				}
 
 				// Find the spatial for the player with name (if any is spawned)
-				Spawn spawn = network.getClient().getSpawnByName(sender);
+				Client client = network.getClient();
+				Spawn spawn = client.getSpawnByName(sender);
 				if (spawn != null) {
 					GameAppState.SpawnData sd = parent.getParent().getSpawnData().get(spawn);
-					Element chatBubble = createSpeechBubble(text, channel);
-					ChatBubble bubble = new ChatBubble(sender, chatBubble, sd.getEntity());
-					chatBubble.addControl(new ChatBubbleTracker(bubble));
+					ChatBubble bubble = new ChatBubble(screen, channel, camera, sd.getEntity(), text);
+					bubble.onElementEvent(evt -> bubbles.remove(sender), Type.HIDDEN);
+					ToolKit.get().getAlarm().timed(() -> bubble.hide(), Constants.UI_CHAT_BUBBLE_TIMEOUT);
 					bubble.position();
 					bubbles.put(sender, bubble);
-					screen.addElement(chatBubble);
-
-					// Make sure chat bubble isnt too large
-					if (chatBubble.getTextElement().getLineCount() < 2) {
-						final float cw = chatBubble.getTextElement().getLineWidth() + chatBubble.borders.y + chatBubble.borders.z
-								+ (chatBubble.getClipPadding() * 2);
-						if (chatBubble.getWidth() > cw) {
-							chatBubble.setWidth(cw);
-						}
-					}
-					final float ch = chatBubble.getTextElement().getLineHeight() * chatBubble.getTextElement().getLineCount()
-							+ chatBubble.borders.x + chatBubble.borders.w + (chatBubble.getClipPadding() * 2);
-					if (chatBubble.getHeight() > ch) {
-						chatBubble.setHeight(ch);
-					}
+					screen.showElement(bubble);
 				}
 
 				return null;
@@ -250,13 +192,14 @@ public class ChatAppState extends IcemoonAppState<HUDAppState>
 			@Override
 			protected void changeChannelColor(XChatBox tab, ChatChannel channel, ColorRGBA newColor) {
 				ChannelType ct = (ChannelType) channel.getCommand();
-				channels.node(ct.name()).put("color", UIUtil.toHexString(newColor));
+				channels.node(ct.name()).put("color", ExtrasUtil.toHexString(newColor));
 			}
 
 			@Override
 			protected ColorRGBA getColorForChannelCommand(XChatBox tab, Object command) {
 				ChannelType ct = (ChannelType) command;
-				return UIUtil.fromColorString(channels.node(ct.name()).get("color", Icelib.toHexString(ct.getColor())));
+				return ExtrasUtil
+						.fromColorString(channels.node(ct.name()).get("color", Icelib.toHexString(ct.getColor())));
 			}
 
 			@Override
@@ -345,10 +288,11 @@ public class ChatAppState extends IcemoonAppState<HUDAppState>
 			protected void saveChat(XChatBox cb, File selectedFile) throws Exception {
 				try {
 					super.saveChat(cb, selectedFile);
-					stateManager.getState(HUDMessageAppState.class).message(Level.INFO,
+					stateManager.getState(HUDMessageAppState.class).message(Channel.INFORMATION,
 							String.format("Chat saved to %s", selectedFile.getAbsolutePath()));
 				} catch (Exception e) {
-					stateManager.getState(HUDMessageAppState.class).message(Level.SEVERE, "Failed to save chat. " + e.getMessage());
+					stateManager.getState(HUDMessageAppState.class).message(Channel.ERROR,
+							"Failed to save chat. " + e.getMessage());
 					throw e;
 				}
 			}
@@ -356,11 +300,13 @@ public class ChatAppState extends IcemoonAppState<HUDAppState>
 			@Override
 			protected void onControlMoveHook() {
 				super.onControlMoveHook(); // To change body of generated
-											 // methods, choose Tools |
-											 // Templates.
+											// methods, choose Tools |
+											// Templates.
 			}
 		};
-		((XScreen) screen).addBoundsChangeHandler(this);
+		chatWindow.onHover(evt -> {
+			setTargetOpacityForState();
+		});
 		chatWindow.setGlobalAlpha(chatOpacity);
 		setTargetOpacityForState();
 		chatWindow.setYourName(parent.getParent().getPlayer().getDisplayName());
@@ -415,54 +361,31 @@ public class ChatAppState extends IcemoonAppState<HUDAppState>
 	}
 
 	public void onAction(String name, boolean isPressed, float tpf) {
-		if (name.equals(MAPPING_TOGGLE_CHAT) && app.getStateManager().getState(ModifierKeysAppState.class).isAlt() && !isPressed) {
+		if (name.equals(MAPPING_TOGGLE_CHAT) && app.getStateManager().getState(ModifierKeysAppState.class).isAlt()
+				&& !isPressed) {
 			Config.toggle(get(), CHAT_WINDOW, CHAT_WINDOW_DEFAULT);
 		}
 	}
 
 	protected void showLinksMenu(List<String> urls) {
-		Menu subMenu = new Menu(screen, Vector2f.ZERO, false) {
-			@Override
-			public void onMenuItemClicked(int index, Object value, boolean isToggled) {
-				try {
-					XDesktop d = XDesktop.getDesktop();
-					d.browse(new URI(value.toString()));
-				} catch (Exception e) {
-					LOG.log(Level.SEVERE, "Could not open site.", e);
-					stateManager.getState(HUDMessageAppState.class).message(Level.SEVERE, "Failed to open site. " + e.getMessage());
-				}
+		Menu<String> subMenu = new Menu<String>(screen);
+		subMenu.onChanged(evt -> {
+			try {
+				XDesktop d = XDesktop.getDesktop();
+				d.browse(new URI(evt.getNewValue().getValue().toString()));
+			} catch (Exception e) {
+				LOG.log(Level.SEVERE, "Could not open site.", e);
+				stateManager.getState(HUDMessageAppState.class).message(Channel.ERROR,
+						"Failed to open site. " + e.getMessage());
 			}
-		};
+		});
 		for (String url : urls) {
-			subMenu.addMenuItem(url, url, null);
+			subMenu.addMenuItem(url);
 		}
 
 		// Show menu
-		screen.addElement(subMenu);
 		Vector2f xy = screen.getMouseXY();
 		subMenu.showMenu(null, xy.x, xy.y - subMenu.getHeight());
-	}
-
-	private Element createSpeechBubble(String text, final ChannelType channel) {
-		Element el = new Element(screen, UIDUtil.getUID(), Vector2f.ZERO,
-				screen.getStyle("SpeechBubble").getVector2f("defaultSize"),
-				screen.getStyle("SpeechBubble").getVector4f("resizeBorders"),
-				screen.getStyle("SpeechBubble").getString("defaultImg")) {
-			{
-				LUtil.removeEffects(this);
-				populateEffects("SpeechBubble");
-			}
-		};
-		el.setTextWrap(LineWrapMode.Word);
-		el.setTextAlign(BitmapFont.Align.Center);
-		el.setTextVAlign(BitmapFont.VAlign.Center);
-		el.setFont(screen.getStyle("Font").getString(screen.getStyle("SpeechBubble").getString("fontName")));
-		el.setFontSize(screen.getStyle("SpeechBubble").getFloat("fontSize"));
-		el.setClipPadding(screen.getStyle("SpeechBubble").getFloat("clipPadding"));
-		el.setFontColor(UIUtil.fromColorString(
-				Config.get().node(Config.CHAT_CHANNELS).node(channel.name()).get("color", Icelib.toHexString(channel.getColor()))));
-		el.setText(text);
-		return el;
 	}
 
 	protected void handleMessage(Object o, String text) {
@@ -536,47 +459,31 @@ public class ChatAppState extends IcemoonAppState<HUDAppState>
 	private void setBestFont(final float newFontSize) {
 		// Choose best font for the size
 		if (newFontSize <= 4) {
-			chatWindow.setChatFont(screen.getStyle("Font").getString("tinyFont"));
-			chatWindow.setChatBoldFont(screen.getStyle("Font").getString("strongFont"));
+			chatWindow.setFontFamily("tiny");
 		} else if (newFontSize <= 8) {
-			chatWindow.setChatFont(screen.getStyle("Font").getString("defaultFont"));
-			chatWindow.setChatBoldFont(screen.getStyle("Font").getString("strongFont"));
+			chatWindow.setFontFamily("default");
 		} else if (newFontSize <= 16) {
-			chatWindow.setChatFont(screen.getStyle("Font").getString("mediumFont"));
-			chatWindow.setChatBoldFont(screen.getStyle("Font").getString("mediumStrongFont"));
+			chatWindow.setFontFamily("medium");
 		} else {
-			chatWindow.setChatFont(screen.getStyle("Font").getString("mediumStrongFont"));
-			chatWindow.setChatBoldFont(screen.getStyle("Font").getString("largeFont"));
+			chatWindow.setFontFamily("mediumStrong");
 		}
 	}
 
 	private void checkChatWindow() {
 		final boolean show = Config.get().getBoolean(Config.CHAT_WINDOW, Config.CHAT_WINDOW_DEFAULT);
 		if (show) {
-			chatWindow.showWithEffect();
+			chatWindow.show();
 		} else {
-			chatWindow.hideWithEffect();
+			chatWindow.hide();
 		}
 	}
 
-	public Element getElement() {
+	public BaseElement getElement() {
 		return chatWindow;
 	}
 
-	public void leftBounds(boolean dragging) {
-		inChatWindowBounds = false;
-		setTargetOpacityForState();
-	}
-
-	public void enteredBounds(boolean dragging) {
-		if (!dragging) {
-			inChatWindowBounds = true;
-			setTargetOpacityForState();
-		}
-	}
-
 	void setTargetOpacityForState() {
-		if (inChatWindowBounds || showingChatTabContextMenu) {
+		if (chatWindow.isHovering() || showingChatTabContextMenu) {
 			targetChatOpacity = Config.get().getFloat(Config.CHAT_ACTIVE_OPACITY, Config.CHAT_ACTIVE_OPACITY_DEFAULT);
 		} else {
 			targetChatOpacity = Config.get().getFloat(Config.CHAT_IDLE_OPACITY, Config.CHAT_IDLE_OPACITY_DEFAULT)
@@ -586,30 +493,5 @@ public class ChatAppState extends IcemoonAppState<HUDAppState>
 
 	public void setInputText(String text) {
 		chatWindow.setInputText(text);
-	}
-
-	class ChatBubbleTracker extends AbstractControl {
-
-		private final ChatBubble bubble;
-		private float timer;
-		private boolean time;
-
-		ChatBubbleTracker(ChatBubble bubble) {
-			this.bubble = bubble;
-		}
-
-		@Override
-		protected void controlUpdate(float tpf) {
-			bubble.position();
-			timer += tpf;
-			if (timer > Constants.UI_CHAT_BUBBLE_TIMEOUT) {
-				LOG.info("Hidng chat bubble");
-				bubble.destroy();
-			}
-		}
-
-		@Override
-		protected void controlRender(RenderManager rm, ViewPort vp) {
-		}
 	}
 }

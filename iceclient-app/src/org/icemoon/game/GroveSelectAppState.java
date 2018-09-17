@@ -9,25 +9,27 @@ import org.icenet.HengeListMessage;
 import org.icenet.NetworkException;
 import org.icescene.IcemoonAppState;
 import org.icescene.IcesceneApp;
-import org.iceui.controls.CancelButton;
-import org.iceui.controls.FancyButtonWindow;
-import org.iceui.controls.FancyWindow;
-import org.iceui.controls.UIUtil;
+import org.iceui.controls.ElementStyle;
 
 import com.jme3.app.state.AppStateManager;
 import com.jme3.input.event.MouseButtonEvent;
-import com.jme3.math.Vector2f;
 
+import icetone.controls.buttons.PushButton;
 import icetone.controls.lists.ComboBox;
 import icetone.controls.lists.SelectList;
-import icetone.controls.lists.Table;
+import icetone.controls.table.Table;
+import icetone.controls.table.TableRow;
 import icetone.controls.text.TextField;
+import icetone.core.BaseElement;
+import icetone.core.Size;
 import icetone.core.Element;
+import icetone.core.layout.ScreenLayoutConstraints;
 import icetone.core.layout.mig.MigLayout;
+import icetone.extras.windows.ButtonWindow;
 
 public class GroveSelectAppState extends IcemoonAppState<HUDAppState> {
 
-	private FancyButtonWindow dialog;
+	private ButtonWindow<Element> dialog;
 	private NetworkAppState network;
 
 	public GroveSelectAppState() {
@@ -44,8 +46,8 @@ public class GroveSelectAppState extends IcemoonAppState<HUDAppState> {
 	@Override
 	protected void postInitialize() {
 
-		dialog = new FancyButtonWindow(screen, new Vector2f(15, 15), FancyWindow.Size.SMALL, true) {
-			private CancelButton btnCancel;
+		dialog = new ButtonWindow<Element>(screen, true) {
+			private PushButton btnCancel;
 			private SelectList list;
 			private TextField nameFilter;
 			private ComboBox attachmentPointFilter;
@@ -83,17 +85,15 @@ public class GroveSelectAppState extends IcemoonAppState<HUDAppState> {
 			}
 
 			@Override
-			protected void createButtons(Element buttons) {
+			protected void createButtons(BaseElement buttons) {
 				super.createButtons(buttons);
-				btnCancel = new CancelButton(screen, getUID() + ":btnCancel") {
-					@Override
-					public void onButtonMouseLeftUp(MouseButtonEvent evt, boolean toggled) {
-						// hideWindow();
-						onCloseWindow();
+				btnCancel = new PushButton(screen, "Cancel") {
+					{
+						setStyleClass("cancel");
 					}
 				};
-				btnCancel.setText("Cancel");
-				buttons.addChild(btnCancel);
+				btnCancel.onMouseReleased(evt -> onCloseWindow());
+				buttons.addElement(btnCancel);
 				form.addFormElement(btnCancel);
 			}
 
@@ -102,12 +102,8 @@ public class GroveSelectAppState extends IcemoonAppState<HUDAppState> {
 				Element container = new Element(screen);
 				container.setLayoutManager(new MigLayout(screen, "wrap 1, fill", "[grow]", "[grow]"));
 
-				table = new Table(screen) {
-					@Override
-					public void onChange() {
-					}
-				};
-				table.setPreferredDimensions(new Vector2f(300, 200));
+				table = new Table(screen);
+				table.setPreferredDimensions(new Size(300, 200));
 				// table.setVisibleRowCount(10);
 				table.addColumn("Grove");
 				table.addColumn("Cost");
@@ -123,7 +119,7 @@ public class GroveSelectAppState extends IcemoonAppState<HUDAppState> {
 							app.enqueue(new Callable<Void>() {
 								public Void call() throws Exception {
 									for (HengeListMessage.Henge g : groves) {
-										Table.TableRow row = new Table.TableRow(screen, table);
+										TableRow row = new TableRow(screen, table);
 										row.addCell(g.getName(), g);
 										row.addCell(String.valueOf(g.getCost()), g);
 										table.addRow(row);
@@ -137,21 +133,18 @@ public class GroveSelectAppState extends IcemoonAppState<HUDAppState> {
 					}
 				}.start();
 
-				container.addChild(table);
+				container.addElement(table);
 
 				return container;
 			}
 		};
 		dialog.setDestroyOnHide(true);
-		dialog.getDragBar().setFontColor(screen.getStyle("Common").getColorRGBA("warningColor"));
+		ElementStyle.warningColor(dialog.getDragBar());
 		dialog.setWindowTitle("Select Grove");
 		dialog.setButtonOkText("Select");
-		dialog.pack(false);
-		dialog.setIsResizable(false);
-		dialog.setIsMovable(false);
-		UIUtil.center(screen, dialog);
-		dialog.showWithEffect();
-		screen.addElement(dialog);
+		dialog.setResizable(false);
+		dialog.setMovable(false);
+		screen.showElement(dialog, ScreenLayoutConstraints.center);
 	}
 
 	public static boolean isShowingGroveSelection(AppStateManager stateManager) {
@@ -171,6 +164,6 @@ public class GroveSelectAppState extends IcemoonAppState<HUDAppState> {
 
 	@Override
 	protected final void onCleanup() {
-		dialog.hideWithEffect();
+		dialog.hide();
 	}
 }

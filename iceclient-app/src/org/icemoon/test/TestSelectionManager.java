@@ -2,7 +2,6 @@ package org.icemoon.test;
 
 import org.apache.commons.cli.CommandLine;
 import org.icemoon.build.BuildableControl;
-import org.icescene.Alarm;
 import org.icescene.TestApp;
 import org.icescene.build.ObjectManipulatorManager;
 import org.icescene.build.SelectionManager;
@@ -69,11 +68,12 @@ public class TestSelectionManager extends TestApp {
 		// Mouse Manager is central point for all mouse handle. Selection
 		// Manager
 		// uses it.
-		final MouseManager mouseManager = new MouseManager(rootNode, new Alarm(this));
+		final MouseManager mouseManager = new MouseManager(rootNode);
 		stateManager.attach(mouseManager);
 
 		// Monitor mouse gestures for selection evemts
-		SelectionManager<AbstractProp, BuildableControl> mgr = new SelectionManager<>(mouseManager, BuildableControl.class);
+		SelectionManager<AbstractProp, BuildableControl> mgr = new SelectionManager<>(mouseManager,
+				BuildableControl.class);
 
 		// Object manipulator. Hooks into the select manager consuming its
 		// events

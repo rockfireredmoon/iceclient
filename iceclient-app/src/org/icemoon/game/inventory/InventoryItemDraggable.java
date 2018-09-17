@@ -9,8 +9,8 @@ import org.icescene.tools.DragContext;
 
 import com.jme3.math.Vector2f;
 
-import icetone.core.Element;
-import icetone.core.ElementManager;
+import icetone.core.BaseElement;
+import icetone.core.BaseScreen;
 import icetone.core.ToolTipProvider;
 
 /**
@@ -26,7 +26,7 @@ public abstract class InventoryItemDraggable extends AbstractDraggable implement
     final InventoryAndEquipment.InventoryItem invItem;
     private final InventoryAndEquipment inventoryAndEquipment;
 
-    public InventoryItemDraggable(DragContext dragContext, ElementManager screen, InventoryAndEquipment inventoryAndEquipment, InventoryAndEquipment.InventoryItem invItem) {
+    public InventoryItemDraggable(DragContext dragContext, BaseScreen screen, InventoryAndEquipment inventoryAndEquipment, InventoryAndEquipment.InventoryItem invItem) {
         super(dragContext, screen, "Icons/" + invItem.getItem().getIcon1(), "Icons/" + invItem.getItem().getIcon2());
         this.invItem = invItem;
         this.inventoryAndEquipment = inventoryAndEquipment;
@@ -35,7 +35,7 @@ public abstract class InventoryItemDraggable extends AbstractDraggable implement
         }
     }
 
-    public Element createToolTip(Vector2f mouseXY, Element el) {
+    public BaseElement createToolTip(Vector2f mouseXY, BaseElement el) {
         return invItem.getItem() == null ? null : new ItemToolTip(screen, invItem.getItem());
     }
 

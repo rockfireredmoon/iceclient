@@ -5,11 +5,12 @@ import java.util.logging.Logger;
 
 import org.icelib.PageLocation;
 import org.icemoon.Config;
-import org.icescene.Alarm;
 import org.icescene.IcemoonAppState;
 import org.icescene.SceneConstants;
 import org.icescene.scene.AbstractSceneQueue;
 import org.icescene.scene.SceneQueueLoadable;
+
+import icetone.core.utils.Alarm;
 
 public abstract class AbstractTileLoadingAppState<T extends IcemoonAppState<?>, I extends SceneQueueLoadable<PageLocation>, L extends AbstractSceneQueue<PageLocation, I>>
 		extends IcemoonAppState<T> {

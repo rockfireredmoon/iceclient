@@ -43,6 +43,7 @@ import com.jme3.bullet.collision.shapes.CapsuleCollisionShape;
 import com.jme3.bullet.collision.shapes.CollisionShape;
 import com.jme3.bullet.collision.shapes.CompoundCollisionShape;
 import com.jme3.bullet.control.AbstractPhysicsControl;
+import com.jme3.bullet.control.BetterCharacterControl;
 import com.jme3.bullet.objects.PhysicsRigidBody;
 import com.jme3.export.InputCapsule;
 import com.jme3.export.JmeExporter;
@@ -813,4 +814,13 @@ public class AdvancedCharacterControl extends AbstractPhysicsControl implements 
     public Vector3f getDir() {
         return rigidBody.getPhysicsLocation().add(walkDirection.setY(0).normalize().mult(getFinalRadius())).add(0, 0.01f, 0);
     }
+
+    @Override
+    public Object jmeClone() {
+        AdvancedCharacterControl control = new AdvancedCharacterControl(radius, height, mass);
+        control.setJumpForce(jumpForce);
+        control.spatial = this.spatial;
+        return control;
+    }     
+
 }

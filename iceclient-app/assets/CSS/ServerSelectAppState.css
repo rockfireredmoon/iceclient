@@ -1,0 +1,10 @@
+h6 {
+	margin: 2em 0;
+}
+
+.detail label {
+	display: inline-block;
+	width: 100px;
+	color: red;
+	font-style: italic;
+}

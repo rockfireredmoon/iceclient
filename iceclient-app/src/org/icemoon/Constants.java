@@ -200,10 +200,6 @@ public class Constants {
 	// Sounds. Some may map to style names in Audio.xml ("UI")
 	//
 	/**
-	 * Enter game (UI)
-	 */
-	public static String SOUND_ENTER_GAME = "enterGame";
-	/**
 	 * Various select events (lists and tab targeting in game)
 	 */
 	public static String SOUND_TAB_TARGET = "tabTarget";

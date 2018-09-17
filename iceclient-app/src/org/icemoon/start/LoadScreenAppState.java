@@ -22,34 +22,34 @@ import org.icemoon.Iceclient;
 import org.icemoon.network.NetworkAppState;
 import org.icenet.Simulator;
 import org.icenet.client.GameServer;
-import org.icescene.Alarm;
 import org.icescene.IcemoonAppState;
 import org.icescene.IcesceneApp;
-import org.iceui.UIConstants;
-import org.iceui.controls.BusySpinner;
 import org.iceui.controls.ElementStyle;
-import org.iceui.controls.UIButton;
 
 import com.jme3.asset.AssetEventListener;
 import com.jme3.asset.AssetKey;
 import com.jme3.font.BitmapFont;
 import com.jme3.font.LineWrapMode;
 import com.jme3.math.ColorRGBA;
-import com.jme3.math.Vector2f;
-import com.jme3.math.Vector4f;
+import com.jme3.texture.Texture;
 import com.jme3.texture.Texture2D;
 
 import icemoon.iceloader.ServerAssetManager;
+import icetone.controls.containers.Panel;
 import icetone.controls.extras.Indicator;
+import icetone.controls.extras.Indicator.DisplayMode;
 import icetone.controls.text.Label;
 import icetone.controls.text.XHTMLLabel;
-import icetone.controls.windows.Panel;
-import icetone.core.Container;
+import icetone.core.Orientation;
+import icetone.core.Size;
+import icetone.core.StyledContainer;
 import icetone.core.Element;
-import icetone.core.Element.ZPriority;
+import icetone.core.ZPriority;
+import icetone.core.layout.Border;
 import icetone.core.layout.BorderLayout;
 import icetone.core.layout.mig.MigLayout;
-import icetone.core.utils.UIDUtil;
+import icetone.core.utils.Alarm;
+import icetone.extras.controls.BusySpinner;
 
 public class LoadScreenAppState extends IcemoonAppState<IcemoonAppState<?>>
 		implements ServerAssetManager.DownloadingListener, AssetEventListener, QueueExecutor.Listener {
@@ -139,90 +139,107 @@ public class LoadScreenAppState extends IcemoonAppState<IcemoonAppState<?>>
 	protected void postInitialize() {
 		currentGameServer = ((Iceclient) app).getCurrentGameServer();
 		if (currentGameServer == null) {
-			loadScreen = new Element(screen, UIDUtil.getUID(), Vector4f.ZERO,
-					screen.getStyle("Common").getString("loadBackground"));
+			loadScreen = new Element(screen);
+			loadScreen.addStyleClass("default-load-screen");
 		} else {
-			loadScreen = new Element(screen, UIDUtil.getUID(), Vector4f.ZERO, null);
+			loadScreen = new Element(screen);
 			loadServerLoadBackground();
 		}
 		loadScreen.setDefaultColor(ColorRGBA.Black);
 		loadScreen.setIgnoreGlobalAlpha(true);
 		loadScreen.setIgnoreMouse(false);
 		loadScreen.setGlobalAlpha(1);
-		loadScreen.setLayoutManager(new MigLayout(screen, "fill, wrap 1", "push[400:600:800]push", "push[][][]"));
+		loadScreen.setLayoutManager(
+				new MigLayout(screen, "fill, wrap 1", "push[400:600:800]push", "push[shrink 0][shrink 0][shrink 0]"));
 
 		// Announcements
-		Panel announcements = new Panel(screen);
+		Panel announcements = new Panel(screen) {
+			{
+				setStyleId("loading-announcements");
+			}
+		};
 		announcements.setLayoutManager(new MigLayout(screen, "fill, wrap 1", "[fill, grow]", "[][]"));
-		announcements.setIsResizable(false);
-		announcements.setIsMovable(false);
+		announcements.setResizable(false);
+		announcements.setMovable(false);
 		Label l = new Label("Announcements", screen);
-		ElementStyle.medium(screen, l);
-		ElementStyle.altColor(screen, l);
+		ElementStyle.medium(l);
+		ElementStyle.altColor(l);
 		l.setTextAlign(BitmapFont.Align.Center);
 		l.setTextWrap(LineWrapMode.Word);
-		announcements.addChild(l, "");
+		announcements.addElement(l, "");
 		announcementsText = new XHTMLLabel(screen);
 		setDefaultAnnouncmentsText();
 		// l.setTextAlign(BitmapFont.Align.Center);
 		// l.setTextWrap(LineWrapMode.Word);
-		announcements.addChild(announcementsText);
+		announcements.addElement(announcementsText);
 		announcements.sizeToContent();
-		loadScreen.addChild(announcements, "growx");
+		loadScreen.addElement(announcements, "growx");
 
 		// Tips
-		Panel tipsPanel = new Panel(screen);
+		Panel tipsPanel = new Panel(screen) {
+			{
+				setStyleId("loading-tips");
+			}
+		};
 		tipsPanel.setLayoutManager(new MigLayout(screen, "wrap 2", "[]32[fill, grow]", "[]"));
-		tipsPanel.setIsResizable(false);
-		tipsPanel.setIsMovable(false);
-		UIButton icon = new UIButton(screen);
-		icon.setButtonIcon(32, 32, screen.getStyle("Common").getString("chatImg"));
-		tipsPanel.addChild(icon, "shrink 0");
+		tipsPanel.setResizable(false);
+		tipsPanel.setMovable(false);
+		Label icon = new Label(screen) {
+			{
+				setStyleClass("icon icon-chat");
+			}
+		};
+		tipsPanel.addElement(icon, "shrink 0");
 		tipText = new XHTMLLabel(screen);
 		tipText.setTextAlign(BitmapFont.Align.Left);
 		tipText.setTextWrap(LineWrapMode.Word);
-		tipsPanel.addChild(tipText, "shrink 100");
-		loadScreen.addChild(tipsPanel, "growx");
+		tipsPanel.addElement(tipText, "shrink 100");
+		loadScreen.addElement(tipsPanel, "growx");
 
 		// Progress title bar
-		Container progressTitle = new Container(screen);
+		StyledContainer progressTitle = new StyledContainer(screen) {
+			{
+				setStyleId("loading-progress");
+			}
+		};
 		progressTitle.setLayoutManager(new BorderLayout());
 		l = new Label("Loading", screen);
-		ElementStyle.altColor(screen, l);
-		ElementStyle.medium(screen, l);
+		ElementStyle.altColor(l);
+		ElementStyle.medium(l);
 		l.setTextAlign(BitmapFont.Align.Left);
 		l.setTextWrap(LineWrapMode.Word);
-		progressTitle.addChild(l, BorderLayout.Border.WEST);
+		progressTitle.addElement(l, Border.WEST);
 		final BusySpinner busySpinner = new BusySpinner(screen);
-		busySpinner.setSpeed(UIConstants.SPINNER_SPEED);
-		progressTitle.addChild(busySpinner, BorderLayout.Border.EAST);
+		busySpinner.setSpeed(BusySpinner.DEFAULT_SPINNER_SPEED);
+		progressTitle.addElement(busySpinner, Border.EAST);
 
 		// Progress window
 		Panel progress = new Panel(screen);
 		progress.setLayoutManager(new MigLayout(screen, "fill, wrap 1", "[]", "[][]"));
-		progress.setIsResizable(false);
-		progress.setIsMovable(false);
-		progress.addChild(progressTitle, "growx, wrap");
-		overallProgress = new Indicator(screen, Element.Orientation.HORIZONTAL);
+		progress.setResizable(false);
+		progress.setMovable(false);
+		progress.addElement(progressTitle, "growx, wrap");
+		overallProgress = new Indicator(screen, Orientation.HORIZONTAL);
 		overallProgress.setMaxValue(0);
 		overallProgress.setCurrentValue(0);
-		progress.addChild(overallProgress, "shrink 0, growx, wrap");
+		progress.addElement(overallProgress, "shrink 0, growx, wrap");
 
 		// Bottom progress
-		Container bottom = new Container(screen);
+		StyledContainer bottom = new StyledContainer(screen);
 		bottom.setLayoutManager(new BorderLayout());
-		loadScreen.addChild(progress, "growx");
+		loadScreen.addElement(progress, "growx");
 		loadText = new Label("Busy", screen);
 		loadText.setTextAlign(BitmapFont.Align.Left);
-		ElementStyle.normal(screen, loadText, false, false, true);
-		bottom.addChild(loadText, BorderLayout.Border.CENTER);
-		fileProgress = new Indicator(screen, Element.Orientation.HORIZONTAL);
+		ElementStyle.normal(loadText, false, false, true);
+		bottom.addElement(loadText, Border.CENTER);
+		fileProgress = new Indicator(screen, Orientation.HORIZONTAL);
+		fileProgress.setDisplayMode(DisplayMode.none);
 		fileProgress.setIndicatorColor(ColorRGBA.Green);
-		fileProgress.setPreferredDimensions(new Vector2f(150, 20));
+		fileProgress.setPreferredDimensions(new Size(150, 20));
 		fileProgress.setMaxValue(100);
 		fileProgress.setCurrentValue(0);
-		bottom.addChild(fileProgress, BorderLayout.Border.EAST);
-		progress.addChild(bottom, "growx");
+		bottom.addElement(fileProgress, Border.EAST);
+		progress.addElement(bottom, "growx");
 
 		network = stateManager.getState(NetworkAppState.class);
 		app.getAssetManager().addAssetEventListener(this);
@@ -258,8 +275,8 @@ public class LoadScreenAppState extends IcemoonAppState<IcemoonAppState<?>>
 			final URL url = new URL(loc + "/load.jpg");
 			final URL aurl = new URL(loc + "/loading_announcements");
 			final URL turl = new URL(loc + "/tips");
-			final String cacheName = currentGameServer.getName();
-			app.getWorldLoaderExecutorService().execute(new Runnable() {
+			final String cacheName = currentGameServer.getName() + "load";
+			new Thread() {
 				@Override
 				public void run() {
 					// Determine location of BG image
@@ -268,6 +285,8 @@ public class LoadScreenAppState extends IcemoonAppState<IcemoonAppState<?>>
 						app.enqueue(new Callable<Void>() {
 							@Override
 							public Void call() throws Exception {
+								loadScreen.setDefaultColor(ColorRGBA.White);
+								loadScreen.removeStyleClass("default-load-screen");
 								loadScreen.setTexture(tex);
 								return null;
 							}
@@ -332,7 +351,7 @@ public class LoadScreenAppState extends IcemoonAppState<IcemoonAppState<?>>
 						});
 					}
 				}
-			});
+			}.start();
 		} catch (MalformedURLException murle) {
 			app.enqueue(new Callable<Void>() {
 				@Override
@@ -347,7 +366,8 @@ public class LoadScreenAppState extends IcemoonAppState<IcemoonAppState<?>>
 	}
 
 	private void setDefaultBackground() {
-		loadScreen.setTexture(app.getAssetManager().loadTexture(screen.getStyle("Common").getString("loadBackground")));
+		loadScreen.clearUserStyles();
+		loadScreen.addStyleClass("default-load-screen");
 	}
 
 	public boolean isInformServer() {
@@ -387,7 +407,7 @@ public class LoadScreenAppState extends IcemoonAppState<IcemoonAppState<?>>
 				setDefaultAnnouncmentsText();
 				setDefaultTipText();
 			} else {
-				loadScreen.setTexture(null);
+				loadScreen.setTexture((Texture) null);
 				tipText.setText("");
 				announcementsText.setText("");
 				loadServerLoadBackground();
@@ -398,7 +418,7 @@ public class LoadScreenAppState extends IcemoonAppState<IcemoonAppState<?>>
 		if (!showing) {
 			LOG.info("Showing load screen");
 			if (app != null) {
-				app.getLayers(ZPriority.FOREGROUND).addChild(loadScreen);
+				app.getLayers(ZPriority.FOREGROUND).addElement(loadScreen);
 			}
 			showing = true;
 			if (isNetworkAvailable() && sendMessage) {
@@ -411,7 +431,7 @@ public class LoadScreenAppState extends IcemoonAppState<IcemoonAppState<?>>
 		if (showing) {
 			LOG.info("Hiding load screen");
 			if (app != null) {
-				app.getLayers(ZPriority.FOREGROUND).removeChild(loadScreen);
+				app.getLayers(ZPriority.FOREGROUND).removeElement(loadScreen);
 			}
 			overallProgress.setMaxValue(0);
 			showing = false;

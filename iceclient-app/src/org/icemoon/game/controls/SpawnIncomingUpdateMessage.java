@@ -173,7 +173,7 @@ public class SpawnIncomingUpdateMessage extends AbstractMoveableProduceConsumerC
             }
 
             if (newLoc != null) {
-                final Vector3f nl = spatial.getLocalTranslation().interpolate(newLoc, tpf * 4);
+                final Vector3f nl = spatial.getLocalTranslation().interpolateLocal(newLoc, tpf * 4);
                 moveableControl.setTargetLocation(nl);
             } else {
                 moveableControl.setTargetLocation(null);

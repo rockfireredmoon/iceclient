@@ -141,7 +141,7 @@ public class SpawnSpatialControl extends AbstractMoveableProduceConsumerControl 
 			} else {
 				checkY(newLoc.x, newLoc.z, tpf);
 				newLoc.y = location.y + offset;
-				spatial.setLocalTranslation(spatial.getLocalTranslation().interpolate(newLoc, tpf * 4));
+				spatial.setLocalTranslation(spatial.getLocalTranslation().interpolateLocal(newLoc, tpf * 4));
 			}
 		} else {
 			// Warp

@@ -2,19 +2,21 @@ package org.icemoon.ui.controls;
 
 import org.icelib.Coin;
 
-import icetone.controls.windows.Panel;
-import icetone.core.ElementManager;
+import icetone.controls.containers.Panel;
+import icetone.core.BaseScreen;
+import icetone.core.ZPriority;
 import icetone.core.layout.mig.MigLayout;
 
 public class CoinToolTip extends Panel {
 
-	public CoinToolTip(ElementManager screen, Coin coin) {
+	public CoinToolTip(BaseScreen screen, Coin coin) {
 		super(screen);
-		setLayoutManager(new MigLayout(screen, "ins 0"));
-		addChild(new CoinPanel(screen, coin));
-		addClippingLayer(this);
+		setLayoutManager(new MigLayout(screen));
+		addElement(new CoinPanel(screen, coin));
 		screen.addElement(this);
+		setLockToParentBounds(true);
 		sizeToContent();
+		setPriority(ZPriority.TOOLTIP);
 	}
 
 }

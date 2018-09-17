@@ -74,7 +74,7 @@ import com.jme3.math.Vector3f;
 import com.jme3.renderer.queue.RenderQueue;
 import com.jme3.scene.Node;
 
-public class GameAppState extends IcemoonAppState<IcemoonAppState> implements TileSource {
+public class GameAppState extends IcemoonAppState<IcemoonAppState<?>> implements TileSource {
 
 	private Node creaturesNode;
 	private TerrainLoader terrainLoader;
@@ -145,12 +145,16 @@ public class GameAppState extends IcemoonAppState<IcemoonAppState> implements Ti
 	}
 
 	@Override
-	protected final IcemoonAppState<IcemoonAppState> onInitialize(final AppStateManager stateManager, final IcesceneApp app) {
+	protected final IcemoonAppState<IcemoonAppState<?>> onInitialize(final AppStateManager stateManager,
+			final IcesceneApp app) {
 		network = stateManager.getState(NetworkAppState.class);
 		dragContext = new DragContext();
 
-		/*
-		 * The scene heirarchy is roughly :-
+		/**
+		 * The scene hierarchy is roughly :-
+		 * 
+		 * <pre>
+		 * 
 		 * 
 		 * MainCamera      MapCamera
 		 *     |              |
@@ -164,6 +168,7 @@ public class GameAppState extends IcemoonAppState<IcemoonAppState> implements Ti
 		 *     \_______ WorldNode
 		 *                  |\________ClutterNode
 		 *                  \_________CreaturesNode
+		 * </pre>
 		 */
 
 		gameNode = new Node("GameNode");
@@ -182,14 +187,19 @@ public class GameAppState extends IcemoonAppState<IcemoonAppState> implements Ti
 		rootNode.attachChild(gameNode);
 		propFactory = new GamePropFactory(app, gameNode);
 
-		/* Manages updating the various tiled loaders by messaging them when
-		 * the player moves into a new tile. Each consumer may have different tile
+		// Post Processing
+		stateManager.attach(new PostProcessAppState(prefs, environmentLight));
+
+		/*
+		 * Manages updating the various tiled loaders by messaging them when the
+		 * player moves into a new tile. Each consumer may have different tile
 		 * sizes
 		 */
 		stateManager.attach(playerLocationAppState = new PlayerLocationAppState(prefs));
 
-		/* The Environment Switcher looks after activating the correct environment for
-		 * the (possibly nested) environment requirments 
+		/*
+		 * The Environment Switcher looks after activating the correct
+		 * environment for the (possibly nested) environment requirments
 		 */
 		stateManager.attach(new EnvironmentSwitcherAppState(prefs, "Default", environmentLight, gameNode, weatherNode));
 
@@ -213,7 +223,8 @@ public class GameAppState extends IcemoonAppState<IcemoonAppState> implements Ti
 
 		// Don't use the global queue, as we don't want creature loading to
 		// trigger loadscreens
-		entityLoader = new EntityLoader(Executors.newFixedThreadPool(1, new QueueExecutor.DaemonThreadFactory("SpawnLoader")), app,
+		entityLoader = new EntityLoader(
+				Executors.newFixedThreadPool(1, new QueueExecutor.DaemonThreadFactory("SpawnLoader")), app,
 				propFactory);
 
 		// Our scenery is big
@@ -237,11 +248,12 @@ public class GameAppState extends IcemoonAppState<IcemoonAppState> implements Ti
 		}
 
 		// Mouse manager (central point for all mouse handling)
-		stateManager.attach(mouseManager = new MouseManager(gameNode, app.getAlarm()));
+		stateManager.attach(mouseManager = new MouseManager(gameNode));
 		mouseManager.addListener(new MouseManager.ListenerAdapter() {
 			@Override
-			public void defaultSelect(MouseManager manager, ModifierKeysAppState mods, CollisionResults collision, float tpf) {
-				screen.setKeyboardElement(null);
+			public void defaultSelect(MouseManager manager, ModifierKeysAppState mods, CollisionResults collision,
+					float tpf) {
+				screen.resetKeyboardFocus(null);
 			}
 		});
 
@@ -254,9 +266,6 @@ public class GameAppState extends IcemoonAppState<IcemoonAppState> implements Ti
 
 		// HUD
 		stateManager.attach(new HUDAppState());
-
-		// Post Processing
-		stateManager.attach(new PostProcessAppState(prefs, environmentLight));
 
 		// Listen for events from the high level Client
 		playerSpawn = network.getClient().getPlayerSpawn();
@@ -327,12 +336,12 @@ public class GameAppState extends IcemoonAppState<IcemoonAppState> implements Ti
 	}
 
 	@Override
-	public void stateDetached(AppStateManager stateManager) {
+	protected void onStateDetached() {
 		stateManager.getState(LoadScreenAppState.class).setAutoShowOnTasks(true);
 		stateManager.getState(LoadScreenAppState.class).setAutoShowOnDownloads(false);
 
 		// Stop loading creatures
-		if(entityLoader != null)
+		if (entityLoader != null)
 			entityLoader.close();
 
 		// Stop listening for events
@@ -438,7 +447,8 @@ public class GameAppState extends IcemoonAppState<IcemoonAppState> implements Ti
 	}
 
 	public AbstractSpawnEntity getPlayerEntity() {
-		return playerSpawn == null ? null : (spawnData.containsKey(playerSpawn) ? spawnData.get(playerSpawn).spatial : null);
+		return playerSpawn == null ? null
+				: (spawnData.containsKey(playerSpawn) ? spawnData.get(playerSpawn).spatial : null);
 	}
 
 	public EntityLoader getSpawnLoader() {
@@ -486,8 +496,8 @@ public class GameAppState extends IcemoonAppState<IcemoonAppState> implements Ti
 		if (requiredTerrain != null) {
 			if (state == null) {
 				LOG.info(String.format("Now have terrain '%s', enabling terrain app state", requiredTerrain));
-				final TerrainAppState terrainAppState = new TerrainAppState(terrainLoader, prefs, environmentLight, mappableNode,
-						propFactory, worldNode, mouseManager);
+				final TerrainAppState terrainAppState = new TerrainAppState(terrainLoader, prefs, environmentLight,
+						mappableNode, propFactory, worldNode, mouseManager);
 				terrainAppState.playerViewLocationChanged(getViewLocation());
 				terrainAppState.playerTileChanged(getViewTile());
 				stateManager.attach(terrainAppState);
@@ -495,8 +505,8 @@ public class GameAppState extends IcemoonAppState<IcemoonAppState> implements Ti
 			} else {
 				final String resourceName = terrainLoader.getTerrainTemplate().getTerrainTemplateName();
 				if (!requiredTerrain.equals(resourceName)) {
-					LOG.info(String.format("Reloading terrain because %s has changed to %s", terrainLoader.getTerrainTemplate()
-							.getTerrainTemplateName(), requiredTerrain));
+					LOG.info(String.format("Reloading terrain because %s has changed to %s",
+							terrainLoader.getTerrainTemplate().getTerrainTemplateName(), requiredTerrain));
 					terrainLoader.setTerrainTemplate(requiredTerrain);
 					TerrainAppState terrainAppState = stateManager.getState(TerrainAppState.class);
 					terrainAppState.playerViewLocationChanged(getViewLocation());
@@ -541,7 +551,10 @@ public class GameAppState extends IcemoonAppState<IcemoonAppState> implements Ti
 
 	private void loadInventory(final SpawnData biped, final Biped creature) throws NetworkException {
 		LOG.info(String.format("Loading inventory for %s", biped.spawn));
-		biped.inventory.rebuild();
+
+		// TODO this whole thing needs fixing
+		// biped.inventory.rebuild();
+
 		loadAppearance(biped, creature);
 		biped.inventory.addListener(new InventoryAndEquipment.Listener() {
 			public void rebuild(Persona persona, InventoryAndEquipment inv) {
@@ -569,7 +582,8 @@ public class GameAppState extends IcemoonAppState<IcemoonAppState> implements Ti
 				});
 			}
 
-			public void slotChanged(InventoryAndEquipment.InventoryItem oldItem, InventoryAndEquipment.InventoryItem newItem) {
+			public void slotChanged(InventoryAndEquipment.InventoryItem oldItem,
+					InventoryAndEquipment.InventoryItem newItem) {
 			}
 		});
 	}
@@ -632,9 +646,8 @@ public class GameAppState extends IcemoonAppState<IcemoonAppState> implements Ti
 					lastCoin = spawn.getPersona().getCoin().clone();
 					app.enqueue(new Callable<Void>() {
 						public Void call() throws Exception {
-							message(Level.SEVERE,
-									String.format("You now have %d gold, %d silver and %d silver", lastCoin.getGold(),
-											lastCoin.getSilver(), lastCoin.getCopper()));
+							message(Level.SEVERE, String.format("You now have %d gold, %d silver and %d silver",
+									lastCoin.getGold(), lastCoin.getSilver(), lastCoin.getCopper()));
 							return null;
 						}
 					});
@@ -656,8 +669,10 @@ public class GameAppState extends IcemoonAppState<IcemoonAppState> implements Ti
 
 			// Add the initial controls
 			playerEntity.getSpatial().addControl(new MoveableCharacterControl(spawn, terrainLoader, playerEntity));
-			if (Config.get().getBoolean(Config.AUDIO_PLAYER_MOVEMENT_SOUNDS, Config.AUDIO_PLAYER_MOVEMENT_SOUNDS_DEFAULT)) {
-				playerEntity.getSpatial().addControl(new PlayerMovementSoundsControl(stateManager.getState(AudioAppState.class)));
+			if (Config.get().getBoolean(Config.AUDIO_PLAYER_MOVEMENT_SOUNDS,
+					Config.AUDIO_PLAYER_MOVEMENT_SOUNDS_DEFAULT)) {
+				playerEntity.getSpatial()
+						.addControl(new PlayerMovementSoundsControl(stateManager.getState(AudioAppState.class)));
 			}
 			playerEntity.getSpatial().addControl(new PlayerIncomingUpdateControl(spawn));
 
@@ -667,17 +682,20 @@ public class GameAppState extends IcemoonAppState<IcemoonAppState> implements Ti
 					LOG.info(String.format("Loading scene for spawn %s", spawn));
 
 					// Animation
-					final PlayerAnimControl playerAnimControl = new PlayerAnimControl(EntityContext.create(app), playerEntity);
+					final PlayerAnimControl playerAnimControl = new PlayerAnimControl(EntityContext.create(app),
+							playerEntity);
 					// playerAnimControl.setDefaultAnim(AnimationSequence.get(SceneConstants.ANIM_IDLE));
 					playerEntity.getSpatial().addControl(playerAnimControl);
 
-					playerEntity.getSpatial().addControl(new PlayerOutgoingUpdateControl(network.getClient(), spawn, playerEntity));
+					playerEntity.getSpatial()
+							.addControl(new PlayerOutgoingUpdateControl(network.getClient(), spawn, playerEntity));
 
 					if (Constants.USE_PHYSICS_FOR_PLAYER) {
-						playerEntity.getSpatial().addControl(
-								new PlayerPhysicsControl(terrainLoader, spawn, playerEntity.getBoundingBox(), true, playerEntity));
+						playerEntity.getSpatial().addControl(new PlayerPhysicsControl(terrainLoader, spawn,
+								playerEntity.getBoundingBox(), true, playerEntity));
 					} else {
-						playerEntity.getSpatial().addControl(new PlayerSpatialControl(terrainLoader, spawn, playerEntity));
+						playerEntity.getSpatial()
+								.addControl(new PlayerSpatialControl(terrainLoader, spawn, playerEntity));
 					}
 
 					// Set the actual height of the player. This is used for
@@ -702,7 +720,8 @@ public class GameAppState extends IcemoonAppState<IcemoonAppState> implements Ti
 					if (Constants.USE_PHYSICS_FOR_PLAYER) {
 						bulletAppState.getPhysicsSpace().remove(playerEntity.getSpatial());
 					}
-					playerEntity.getSpatial().removeControl(playerEntity.getSpatial().getControl(PlayerPhysicsControl.class));
+					playerEntity.getSpatial()
+							.removeControl(playerEntity.getSpatial().getControl(PlayerPhysicsControl.class));
 					playerEntity.getSpatial()
 							.removeControl(playerEntity.getSpatial().getControl(PlayerOutgoingUpdateControl.class));
 
@@ -712,13 +731,15 @@ public class GameAppState extends IcemoonAppState<IcemoonAppState> implements Ti
 			playerEntity.invoke(AbstractLoadableEntity.When.AFTER_DESTROY, new Callable<Void>() {
 				public Void call() throws Exception {
 
-					if (Config.get().getBoolean(Config.AUDIO_PLAYER_MOVEMENT_SOUNDS, Config.AUDIO_PLAYER_MOVEMENT_SOUNDS_DEFAULT)) {
-						playerEntity.getSpatial().removeControl(
-								playerEntity.getSpatial().getControl(PlayerMovementSoundsControl.class));
+					if (Config.get().getBoolean(Config.AUDIO_PLAYER_MOVEMENT_SOUNDS,
+							Config.AUDIO_PLAYER_MOVEMENT_SOUNDS_DEFAULT)) {
+						playerEntity.getSpatial()
+								.removeControl(playerEntity.getSpatial().getControl(PlayerMovementSoundsControl.class));
 					}
 					playerEntity.getSpatial()
 							.removeControl(playerEntity.getSpatial().getControl(PlayerIncomingUpdateControl.class));
-					playerEntity.getSpatial().removeControl(playerEntity.getSpatial().getControl(MoveableCharacterControl.class));
+					playerEntity.getSpatial()
+							.removeControl(playerEntity.getSpatial().getControl(MoveableCharacterControl.class));
 
 					sd.inventory.destroy();
 
@@ -745,7 +766,8 @@ public class GameAppState extends IcemoonAppState<IcemoonAppState> implements Ti
 			spawnEntity.invoke(AbstractLoadableEntity.When.AFTER_SCENE_LOADED, new Callable<Void>() {
 				public Void call() throws Exception {
 
-					spawnEntity.getSpatial().addControl(new MoveableCharacterControl(spawn, terrainLoader, spawnEntity));
+					spawnEntity.getSpatial()
+							.addControl(new MoveableCharacterControl(spawn, terrainLoader, spawnEntity));
 
 					// Only creatures are animated
 					if (spawnEntity instanceof AbstractCreatureEntity) {
@@ -780,9 +802,12 @@ public class GameAppState extends IcemoonAppState<IcemoonAppState> implements Ti
 
 					// spawnNode.removeControl(spawnNode.getControl(SpawnMoverControl.class));
 					// spawnNode.removeControl(spawnNode.getControl(SpawnPhysicsControl.class));
-					spawnEntity.getSpatial().removeControl(spawnEntity.getSpatial().getControl(SpawnSpatialControl.class));
-					spawnEntity.getSpatial().removeControl(spawnEntity.getSpatial().getControl(SpawnIncomingUpdateMessage.class));
-					spawnEntity.getSpatial().removeControl(spawnEntity.getSpatial().getControl(MoveableCharacterControl.class));
+					spawnEntity.getSpatial()
+							.removeControl(spawnEntity.getSpatial().getControl(SpawnSpatialControl.class));
+					spawnEntity.getSpatial()
+							.removeControl(spawnEntity.getSpatial().getControl(SpawnIncomingUpdateMessage.class));
+					spawnEntity.getSpatial()
+							.removeControl(spawnEntity.getSpatial().getControl(MoveableCharacterControl.class));
 
 					return null;
 				}
@@ -806,7 +831,8 @@ public class GameAppState extends IcemoonAppState<IcemoonAppState> implements Ti
 		if (spatial instanceof AbstractCreatureEntity) {
 			HUDAppState hud = stateManager.getState(HUDAppState.class);
 			if (hud != null && hud.isShowingHud()) {
-				((AbstractCreatureEntity) spatial).setShowingNameplate(true);;
+				((AbstractCreatureEntity) spatial).setShowingNameplate(true);
+				;
 			}
 		}
 		initBipedData(spawn, spatial);
@@ -950,8 +976,8 @@ public class GameAppState extends IcemoonAppState<IcemoonAppState> implements Ti
 			if (evt.getNewValue().equals("false")) {
 				getPlayerEntity().getSpatial().removeControl(PlayerMovementSoundsControl.class);
 			} else {
-				getPlayerEntity().getSpatial().addControl(
-						new PlayerMovementSoundsControl(stateManager.getState(AudioAppState.class)));
+				getPlayerEntity().getSpatial()
+						.addControl(new PlayerMovementSoundsControl(stateManager.getState(AudioAppState.class)));
 			}
 		}
 	}

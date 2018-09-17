@@ -1,28 +1,25 @@
 package org.icemoon.start;
 
 import org.icemoon.Iceclient;
-import org.iceui.controls.XScreen;
-import org.iceui.effects.EffectHelper;
 
 import com.jme3.app.Application;
 import com.jme3.app.state.AbstractAppState;
 import com.jme3.app.state.AppStateManager;
 
-import icetone.core.Element;
-import icetone.core.Element.ZPriority;
+import icetone.core.BaseElement;
+import icetone.core.BaseScreen;
+import icetone.core.ZPriority;
 import icetone.core.layout.mig.MigLayout;
-import icetone.effects.Effect;
 
 /**
  * This appstate provides the audio / video buttons visible while on the login
- * page
- * and the lobby. This is not used in game.
+ * page and the lobby. This is not used in game.
  */
 public class AudioVideoOptionsAppState extends AbstractAppState {
 
 	private Iceclient app;
-	private XScreen screen;
-	private Element layer;
+	private BaseScreen screen;
+	private BaseElement layer;
 	private AudioVideoToolButtons cfg;
 
 	@Override
@@ -32,21 +29,14 @@ public class AudioVideoOptionsAppState extends AbstractAppState {
 		this.app = (Iceclient) app;
 		this.screen = this.app.getScreen();
 
-		layer = new Element(screen);
+		layer = new BaseElement(screen);
 		layer.setAsContainerOnly();
 		layer.setLayoutManager(new MigLayout(screen, "wrap 1", "push[]", "[]"));
 
 		cfg = new AudioVideoToolButtons(screen);
-		layer.addChild(cfg, "ax right");
+		layer.addElement(cfg, "ax right");
 
-		this.app.getLayers(ZPriority.NORMAL).addChild(layer);
-		new EffectHelper().reveal(layer, Effect.EffectType.FadeIn);
+		this.app.getLayers(ZPriority.NORMAL).showElement(layer);
 
-	}
-
-	@Override
-	public void cleanup() {
-		super.cleanup();
-		new EffectHelper().destroy(layer, Effect.EffectType.FadeOut);
 	}
 }

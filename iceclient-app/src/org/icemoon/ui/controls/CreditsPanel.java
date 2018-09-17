@@ -1,11 +1,9 @@
 package org.icemoon.ui.controls;
 
 import icetone.controls.text.Label;
+import icetone.core.BaseScreen;
 import icetone.core.Element;
-import icetone.core.ElementManager;
 import icetone.core.layout.mig.MigLayout;
-import icetone.core.utils.UIDUtil;
-import icetone.style.Style;
 
 /**
  * A component that displays available credits.
@@ -14,18 +12,16 @@ public class CreditsPanel extends Element {
 
     private final Label credits;
 
-    public CreditsPanel(ElementManager screen, long credits) {
+    public CreditsPanel(BaseScreen screen, long credits) {
         this(screen);
         setCredits(credits);
     }
 
-    public CreditsPanel(ElementManager screen) {
+    public CreditsPanel(BaseScreen screen) {
         super(screen);
         setLayoutManager(new MigLayout(screen, "ins 0", "[][]", "[]"));
-        final Style style = screen.getStyle("CreditsPanel");
-        addChild(new Element(screen, UIDUtil.getUID(), style.getVector2f("creditsSize"),
-                style.getVector4f("creditsResizeBorders"), style.getString("creditsImg")));
-        addChild(credits = new Label("000", screen));
+        addElement(new Element(screen).addStyleClass("icon credits"));
+        addElement(credits = new Label("000", screen));
 
     }
 

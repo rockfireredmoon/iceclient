@@ -5,11 +5,10 @@ import org.icescene.tools.DragContext;
 
 import com.jme3.input.event.MouseButtonEvent;
 
+import icetone.core.BaseElement;
 import icetone.core.Element;
-import icetone.core.ElementManager;
+import icetone.core.BaseScreen;
 import icetone.core.layout.FillLayout;
-import icetone.core.layout.LUtil;
-import icetone.core.utils.UIDUtil;
 
 /**
  * Place for inventory items to be dropped.
@@ -21,8 +20,8 @@ public abstract class InventoryItemDroppable extends Element {
     private final InventoryAndEquipment inventoryAndEquipment;
     protected InventoryItemDraggable draggable;
 
-    public InventoryItemDroppable(DragContext dragContext, ElementManager screen, InventoryAndEquipment inventoryAndEquipment, InventoryAndEquipment.InventoryItem invItem) {
-        super(screen, UIDUtil.getUID(), screen.getStyle("SlotButton").getVector2f("defaultSize"), screen.getStyle("SlotButton").getVector4f("resizeBorders"), screen.getStyle("SlotButton").getString("defaultImg"));
+    public InventoryItemDroppable(DragContext dragContext, BaseScreen screen, InventoryAndEquipment inventoryAndEquipment, InventoryAndEquipment.InventoryItem invItem) {
+        super(screen);
 
         this.dragContext = dragContext;
         this.inventoryAndEquipment = inventoryAndEquipment;
@@ -30,12 +29,12 @@ public abstract class InventoryItemDroppable extends Element {
 
         setLayoutManager(new FillLayout());
         createDraggable();
-        setIsDragDropDropElement(true);
+        setDragDropDropElement(true);
     }
 
     public void update() {
         if (draggable != null) {
-            removeChild(draggable);
+            removeElement(draggable);
         }
         createDraggable();
     }
@@ -46,14 +45,14 @@ public abstract class InventoryItemDroppable extends Element {
 
     private void createDraggable() {
         if (inventoryItem.getItem() != null) {
-            addChild(draggable = new InventoryItemDraggable(dragContext, screen, inventoryAndEquipment, inventoryItem) {
+            addElement(draggable = new InventoryItemDraggable(dragContext, screen, inventoryAndEquipment, inventoryItem) {
                 @Override
-                protected boolean doOnDragEnd(MouseButtonEvent mbe, Element elmnt) {
-                    try {
+                protected boolean doOnDragEnd(MouseButtonEvent mbe, BaseElement elmnt) {
+//                    try {
                         return doEndDraggableDrag(mbe, elmnt);
-                    } finally {
-                        screen.updateZOrder(LUtil.getRootElement(this));
-                    }
+							// } finally {
+							// screen.updateZOrder(LUtil.getRootElement(this));
+							// }
                 }
 
                 @Override
@@ -65,5 +64,5 @@ public abstract class InventoryItemDroppable extends Element {
         }
     }
 
-    protected abstract boolean doEndDraggableDrag(MouseButtonEvent mbe, Element elmnt);
+    protected abstract boolean doEndDraggableDrag(MouseButtonEvent mbe, BaseElement elmnt);
 }

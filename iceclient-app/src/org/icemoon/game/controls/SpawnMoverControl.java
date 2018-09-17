@@ -168,8 +168,7 @@ public class SpawnMoverControl extends AbstractMoveableProduceConsumerControl {
                 setDir = false;
                 newLoc = null;
             } else {
-                final Vector3f nl = spatial.getLocalTranslation().interpolate(newLoc, tpf * 4);
-                spatial.setLocalTranslation(nl);
+                spatial.getLocalTranslation().interpolateLocal(newLoc, tpf * 4);
             }
 
         } else {

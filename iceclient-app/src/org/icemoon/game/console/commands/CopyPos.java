@@ -6,12 +6,14 @@ import org.icemoon.game.GameAppState;
 import org.icescene.console.AbstractCommand;
 import org.icescene.console.Command;
 
+import icetone.core.ToolKit;
+
 @Command(names = "copypos")
 public class CopyPos extends AbstractCommand {
 
-    public boolean run(String cmdName, CommandLine commandLine) {
-        Point3D loc = console.getApp().getStateManager().getState(GameAppState.class).getSpawn().getLocation();
-        console.getApp().getScreen().setClipboardText(String.format("%6.3f,%6.3f,%6.3f", loc.x, loc.y, loc.z));
-        return true;
-    }
+	public boolean run(String cmdName, CommandLine commandLine) {
+		Point3D loc = console.getApp().getStateManager().getState(GameAppState.class).getSpawn().getLocation();
+		ToolKit.get().setClipboardText(String.format("%6.3f,%6.3f,%6.3f", loc.x, loc.y, loc.z));
+		return true;
+	}
 }
